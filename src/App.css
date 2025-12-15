@@ -1,0 +1,548 @@
+/* src/App.css */
+
+:root {
+  --bg: #050816;
+  --bg-card: #0c1024;
+  --bg-card-soft: #10152c;
+  --accent: #3b82f6;
+  --accent-soft: rgba(59, 130, 246, 0.16);
+  --accent-strong: #2563eb;
+  --danger: #ef4444;
+  --danger-soft: rgba(239, 68, 68, 0.16);
+  --text: #f9fafb;
+  --text-muted: #9ca3af;
+  --border: #1f2937;
+  --border-soft: #111827;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.55);
+  --shadow-subtle: 0 10px 28px rgba(0, 0, 0, 0.45);
+  --transition-fast: 150ms ease-out;
+  --transition-med: 200ms ease-out;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+body {
+  overscroll-behavior: contain;
+}
+
+/* === layout / base === */
+
+.container {
+  position: relative;
+  min-height: 100vh;
+  padding: 14px;
+  overflow: hidden;
+  background: radial-gradient(circle at top left, #111827 0, #020617 40%, #020617 100%);
+  color: var(--text);
+}
+
+.bgBlockchain {
+  position: absolute;
+  inset: -40px;
+  pointer-events: none;
+  opacity: 0.55;
+  background:
+    radial-gradient(circle at 0 0, rgba(59, 130, 246, 0.18), transparent 55%),
+    radial-gradient(circle at 100% 0, rgba(16, 185, 129, 0.16), transparent 55%),
+    radial-gradient(circle at 50% 100%, rgba(129, 140, 248, 0.18), transparent 60%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.98));
+  -webkit-mask-image: radial-gradient(circle at center, black 0, black 65%, transparent 100%);
+  mask-image: radial-gradient(circle at center, black 0, black 65%, transparent 100%);
+  z-index: 0;
+}
+
+/* faint blockchain-ish grid */
+.bgBlockchain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.09) 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.35;
+}
+
+/* main card */
+
+.main {
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
+  margin: 18px auto 0;
+  padding: 18px 14px 18px;
+  background: radial-gradient(circle at top left, rgba(37, 99, 235, 0.24), transparent 55%),
+              radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.16), transparent 55%),
+              linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.98));
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-soft);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+/* top bar */
+
+.topBar {
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 14px 0;
+}
+
+.topButtons {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.addrCol {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(15, 23, 42, 0.98));
+  border: 1px solid rgba(31, 41, 55, 0.9);
+  box-shadow: var(--shadow-subtle);
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.small {
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.smallText {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.buttonsStack {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* buttons */
+
+button {
+  cursor: pointer;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 14px;
+  background: #1f2937;
+  color: var(--text);
+  transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), opacity var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+button:not(:disabled):active {
+  transform: translateY(0.5px) scale(0.99);
+}
+
+.cta {
+  width: 100%;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, var(--accent-strong), #22c55e);
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 12px 30px rgba(34, 197, 94, 0.45);
+}
+
+.cta:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1d4ed8, #16a34a);
+}
+
+.secondary {
+  background: rgba(30, 64, 175, 0.16);
+  border-color: rgba(59, 130, 246, 0.7);
+}
+
+.secondary:hover:not(:disabled) {
+  background: rgba(37, 99, 235, 0.24);
+}
+
+.danger {
+  background: var(--danger-soft);
+  border-color: rgba(248, 113, 113, 0.85);
+}
+
+.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.26);
+}
+
+.tiny {
+  font-size: 11px;
+  padding: 4px 9px;
+  background: rgba(15, 118, 110, 0.22);
+  border-color: rgba(45, 212, 191, 0.7);
+}
+
+/* pending banner - tweaked (less pill-like, more contrast + shadow) */
+
+.pendingBanner {
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
+  margin: 10px auto 0;
+  padding: 12px 14px;
+  border-radius: 12px; /* was 999px */
+  background: linear-gradient(90deg, rgba(59,130,246,0.12), rgba(16,185,129,0.06));
+  border: 1px solid rgba(59, 130, 246, 0.75); /* stronger accent border */
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  box-shadow: 0 8px 30px rgba(37, 99, 235, 0.12);
+}
+
+.openWalletInline {
+  padding: 6px 12px;
+  font-size: 12px;
+  background: rgba(59, 130, 246, 0.14); /* stronger */
+  border-color: rgba(38, 207, 179, 0.85);
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.06);
+}
+
+/* headings */
+
+.main h3 {
+  margin: 4px 2px 10px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.sectionHeader {
+  margin: 18px 2px 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* form/layout blocks */
+
+.formGroup {
+  margin-top: 16px;
+  margin-bottom: 10px;
+}
+
+.formGroup label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+input,
+select {
+  font-size: 13px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.96);
+  color: var(--text);
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+}
+
+input::placeholder {
+  color: rgba(148, 163, 184, 0.7);
+}
+
+input:focus,
+select:focus {
+  border-color: rgba(59, 130, 246, 0.8);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.4);
+  background: #020617;
+}
+
+select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #9ca3af 50%),
+    linear-gradient(135deg, #9ca3af 50%, transparent 50%);
+  background-position:
+    calc(100% - 12px) calc(50% - 3px),
+    calc(100% - 8px)  calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+
+.buttonGroup {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* meta information */
+
+.meta {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 12px;
+  border: 1px solid rgba(31, 41, 55, 0.9);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.banner {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  font-size: 12px;
+}
+
+/* settings grid */
+
+.settingsGrid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1.1fr 1.1fr;
+  gap: 10px;
+}
+
+/* status panel (deposit + fee info) */
+
+.statusPanel {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(17, 24, 39, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* hints / status */
+
+.hint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.statusText {
+  margin-top: 16px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(31, 41, 55, 0.9);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* spacing under top buttons to avoid crowding escrow label */
+
+.main {
+  margin-top: 22px;
+}
+
+/* responsive tweaks */
+
+@media (max-width: 480px) {
+  .main {
+    padding: 16px 12px 16px;
+  }
+
+  .topButtons {
+    flex-direction: column;
+  }
+
+  .addrCol {
+    padding: 8px 10px;
+  }
+
+  .statusPanel {
+    font-size: 10px;
+  }
+
+  .pendingBanner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Modal styles moved out of inline JS for accessibility & linting */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  background: rgba(0,0,0,0.5);
+  padding: 12px;
+}
+
+.modalBox {
+  max-width: 560px;
+  width: 100%;
+  background: linear-gradient(180deg, rgba(7,17,38,0.98), rgba(6,10,28,0.98));
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(148,163,184,0.14);
+  box-shadow: 0 20px 50px rgba(2,6,23,0.65);
+  color: var(--text);
+}
+
+.modalTitle {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.modalLead {
+  margin-bottom: 8px;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.modalTextarea {
+  width: 100%;
+  height: 88px;
+  border-radius: 8px;
+  padding: 8px;
+  font-family: ui-monospace, monospace;
+  resize: none;
+  border: 1px solid rgba(31,41,55,0.9);
+  background: rgba(10,14,24,0.9);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.modalOkButton {
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, var(--accent-strong), #22c55e);
+  border: 1px solid rgba(59,130,246,0.5);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.modalOkButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+/* slightly tweak pending banner button look to stand out more (less rounded) */
+.openWalletInline {
+  padding: 6px 12px;
+  font-size: 12px;
+  background: var(--accent-soft);
+  border-color: rgba(38, 207, 179, 0.8);
+  border-radius: 10px;
+}
+
+/* modal wrappers (final inline-style cleanup) */
+
+.modalWrapper {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+}
+
+.highlightButton {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(16, 185, 129, 0.15));
+  border: 1px solid rgba(59, 130, 246, 0.6);
+  font-weight: 600;
+}
+.highlightButton:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Enhanced button styles — fully customizable, works with your existing grid */
+.actionGrid button {
+  padding: 14px 18px;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  transition: all 0.22s ease;
+  min-height: 52px;
+}
+
+/* Active state — default blue */
+.actionGrid button:not(:disabled) {
+  background: linear-gradient(135deg, #0066ff, #3388ff);
+  color: white;
+  box-shadow: 0 4px 14px rgba(0, 102, 255, 0.25);
+}
+
+/* Active danger buttons (Raise Dispute, etc.) */
+.actionGrid button.danger:not(:disabled) {
+  background: linear-gradient(135deg, #ff3333, #ff5555);
+  box-shadow: 0 4px 14px rgba(255, 51, 51, 0.3);
+}
+
+/* Disabled state — clean & clear */
+.actionGrid button:disabled {
+  background: #2a2a2a !important;
+  color: #666 !important;
+  box-shadow: none !important;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Pressed effect */
+.actionGrid button:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.actionGrid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.actionGrid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
