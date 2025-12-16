@@ -13,7 +13,7 @@ import {
   formatUnits,
   http,
   parseUnits
-} from 'viem';
+} from 'viem';wrong
 import { bsc } from 'viem/chains';
 
 import factoryAbi from './abis/ForjeEscrowFactory.json';
