@@ -552,13 +552,6 @@ select {
   height: 32px;
 }
 
-/* Internal separator in Create form */
-.createEscrowSeparator {
-  height: 12px;
-  border-bottom: 1px solid #444;
-  margin: 0 16px;
-}
-
 /* Invalid address hint */
 .invalidHint {
   color: #ff6666;
