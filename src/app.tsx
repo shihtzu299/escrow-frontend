@@ -13,7 +13,7 @@ import {
   formatUnits,
   http,
   parseUnits
-} from 'viem';wrong
+} from 'viem';
 import { bsc } from 'viem/chains';
 
 import factoryAbi from './abis/ForjeEscrowFactory.json';
@@ -290,7 +290,7 @@ export default function App() {
   const tokenAddr = useMemo(() => settlement === 'USDT' ? USDT : USDC, [settlement]);
   const readDecimals = async (token: Address) => await pub!.readContract({ address: token, abi: erc20Abi, functionName: 'decimals' }) as number;
 
-  const ensureBscTestnet = async () => {
+  const ensureBsc = async () => {
     if (!wc) throw new Error('Wallet not connected');
     if (normalizeChainId(chainId) === BSC_MAINNET_HEX) return;
     try { await wc.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: BSC_MAINNET_HEX }] }); }
@@ -408,7 +408,7 @@ export default function App() {
 
       const tokenAddr = settlementToken === 'USDT' ? USDT : USDC;
 
-      await ensureBscTestnet();  // ← Change to ensureBscMainnet on mainnet
+      await ensureBsc();
 
       setStatus('Creating escrow... Please confirm in wallet');
 
@@ -464,7 +464,7 @@ export default function App() {
     try {
       if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
       if (role !== 'client') throw new Error('Only the client can approve token spending');
-      await ensureBscTestnet();
+      await ensureBsc();
       const token = tokenAddr;
       const dec = await readDecimals(token);
       const amt = parseUnits(amount || '0', dec);
@@ -489,7 +489,7 @@ export default function App() {
       if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
       if (role !== 'client') throw new Error('Only the client can deposit');
       if (escrowState !== 0) throw new Error('Deposit allowed only in Funding state');
-      await ensureBscTestnet();
+      await ensureBsc();
       const token = tokenAddr;
       const dec = await readDecimals(token);
       const amt = parseUnits(amount || '0', dec);
@@ -513,7 +513,7 @@ export default function App() {
       if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
       if (role !== 'client') throw new Error('Only the client can pay fee');
       if (escrowState !== 0) throw new Error('Fee allowed only in Funding state');
-      await ensureBscTestnet();
+      await ensureBsc();
       await withPending(async () => {
         const hash = await wallet.writeContract({
           address: escrow!, abi: escrowAbi as any, functionName: 'payFee',
@@ -535,7 +535,7 @@ export default function App() {
       if (role !== 'client') throw new Error('Only the client can request revision');
       if (escrowState !== 2) throw new Error('Revision only after proof is Submitted');
       if (revisions >= Number(MAX_REVISIONS)) throw new Error('Max revisions reached');
-      await ensureBscTestnet();
+      await ensureBsc();
       await withPending(async () => {
         const hash = await wallet.writeContract({
           address: escrow!, abi: escrowAbi as any, functionName: 'requestRevision',
@@ -556,7 +556,7 @@ export default function App() {
       if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
       if (role !== 'client') throw new Error('Only the client can approve');
       if (escrowState !== 2) throw new Error('Approve only when Submitted');
-      await ensureBscTestnet();
+      await ensureBsc();
       await withPending(async () => {
         const hash = await wallet.writeContract({
           address: escrow!, abi: escrowAbi as any, functionName: 'approve',
@@ -580,7 +580,7 @@ export default function App() {
       }
       if (!canRaiseDispute) throw new Error('Dispute allowed only in Submitted or Revised state');
       
-      await ensureBscTestnet();
+      await ensureBsc();
       await withPending(async () => {
         const hash = await wallet.writeContract({
           address: escrow!,
@@ -604,7 +604,7 @@ export default function App() {
       if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
       if (role !== 'client') throw new Error('Only the client can refund-no-start');
       if (!canRefundNoStart) throw new Error('Refund only after start deadline if not started');
-      await ensureBscTestnet();
+      await ensureBsc();
       await withPending(async () => {
         const hash = await wallet.writeContract({
           address: escrow!, abi: escrowAbi as any, functionName: 'refundNoStart',
@@ -625,7 +625,7 @@ export default function App() {
       if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
       if (role !== 'freelancer') throw new Error('Only the freelancer can start the job');
       if (!canFreelancerStart) throw new Error('Start only after client funded deposit + fee, before start deadline');
-      await ensureBscTestnet();
+      await ensureBsc();
       await withPending(async () => {
         const hash = await wallet.writeContract({
           address: escrow!, abi: escrowAbi as any, functionName: 'startJob',
@@ -655,7 +655,7 @@ export default function App() {
         return;
       }
 
-      await ensureBscTestnet();
+      await ensureBsc();
       await withPending(async () => {
         const hash = await wallet.writeContract({
           address: escrow!, abi: escrowAbi as any, functionName: 'submitProof',
@@ -676,7 +676,7 @@ export default function App() {
       if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
       if (role !== 'oracle') throw new Error('Only the oracle can settle disputes');
       if (!canOracleSettle) throw new Error('Settle only after grace period in Disputed state');
-      await ensureBscTestnet();
+      await ensureBsc();
       await withPending(async () => {
         const hash = await wallet.writeContract({
           address: escrow!, abi: escrowAbi as any, functionName: 'settleDispute',
@@ -797,7 +797,7 @@ export default function App() {
             <div className="buttonsStack">
               <button className="secondary" onClick={() => tryOpenWallet(wc)}>Open Wallet</button>
               <button className="danger" onClick={hardDisconnect}>Disconnect</button>
-              {wrongNet && <button className="tiny" onClick={ensureBscTestnet}>Switch to BSC Testnet</button>}
+              {wrongNet && <button className="tiny" onClick={ensureBsc}>Switch to BSC</button>}
             </div>
           </div>
         )}
