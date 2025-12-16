@@ -239,7 +239,17 @@ export default function App() {
           params: [{ chainId: BSC_MAINNET_HEX }]
         });
       });
-
+      useEffect(() => {
+      // Fix WalletConnect deep links in Telegram WebView
+      const originalOpen = window.open;
+      window.open = (url, target, features) => {
+        if (url && typeof url === 'string' && (url.startsWith('wc:') || url.includes('walletconnect') || url.startsWith('metamask://'))) {
+          WebApp.openLink(url);
+          return null;
+        }
+        return originalOpen(url, target, features);
+      };
+      },[]);
       const cid = (provider.chainId ?? await provider.request?.({ method: 'eth_chainId' })) as any;
       setChainId(normalizeChainId(cid));
 
