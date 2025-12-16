@@ -887,7 +887,7 @@ export default function App() {
                   disabled={!isValidEthereumAddress(freelancerAddr) || pendingApproval}
                   className="cta"
                 >
-                  Create Escrow (you pay gas)
+                  Forge Escrow
                 </button>
                 {!isValidEthereumAddress(freelancerAddr) && freelancerAddr && (
                   <div className="hint invalidHint">
