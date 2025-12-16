@@ -546,3 +546,28 @@ select {
   flex-direction: column;
   gap: 4px;
 }
+
+/* Separation between Next Step banner and Create section */
+.nextStepToCreateSpacer {
+  height: 32px;
+}
+
+/* Internal separator in Create form */
+.createEscrowSeparator {
+  height: 12px;
+  border-bottom: 1px solid #444;
+  margin: 0 16px;
+}
+
+/* Invalid address hint */
+.invalidHint {
+  color: #ff6666;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+/* Long status text wrapping */
+.statusText {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}

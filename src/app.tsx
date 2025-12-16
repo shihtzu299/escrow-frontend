@@ -1,5 +1,6 @@
 /* src/App.tsx */
 import { useEffect, useMemo, useState } from 'react';
+import { ethers } from 'ethers';
 import './App.css';
 
 import WebApp from '@twa-dev/sdk';
@@ -26,6 +27,7 @@ const USDT = env.VITE_USDT as Address;
 const USDC = env.VITE_USDC as Address;
 const WC_ID = env.VITE_WC_PROJECT_ID as string;
 const WALLET_DEEPLINK = (env.VITE_WALLET_DEEPLINK || '') as string;
+const BOT_ORACLE_ADDRESS = import.meta.env.VITE_BOT_ORACLE as Address;
 
 // ===== minimal ERC20 ABI =====
 const erc20Abi = [
@@ -103,6 +105,8 @@ export default function App() {
   const [pub, setPub] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
   const [wc, setWc] = useState<any>(null);
+  const [freelancerAddr, setFreelancerAddr] = useState('');
+  const [settlementToken, setSettlementToken] = useState<'USDT'|'USDC'>('USDT');
 
   // escrow + ui
   const [escrow, setEscrow] = useState<Address>();
@@ -148,20 +152,45 @@ export default function App() {
     if (escrowTokenSymbol) setSettlement(escrowTokenSymbol);
   }, [escrowTokenSymbol]);
 
-  // ====== ENHANCEMENT: escrow address input with trim + validation ======
   const handleEscrowChange = (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) {
       setEscrow(undefined);
+      resetEscrowData();
+      setFreelancerAddr('');  // Clear create form
       return;
     }
     if (isValidEthereumAddress(trimmed)) {
       setEscrow(trimmed as Address);
     } else {
       setEscrow(undefined);
+      resetEscrowData();
       WebApp.HapticFeedback.notificationOccurred('error');
       WebApp.showAlert('Invalid escrow address.\nPlease enter a valid 0x Ethereum address (42 characters).');
     }
+  };
+
+  // NEW: Reset all escrow data when address cleared
+  const resetEscrowData = () => {
+    setEscrowClient(undefined);
+    setEscrowFreelancer(undefined);
+    setEscrowOracle(undefined);
+    setEscrowToken(undefined);
+    setEscrowState(undefined);
+    setDepositAmount(0n);
+    setEscrowTokenDecimals(undefined);
+    setDepositDeadline(0n);
+    setStartDeadline(0n);
+    setCompletionDeadline(0n);
+    setRevisions(0);
+    setMAX_REVISIONS(2n);
+    setDISPUTE_GRACE(7n * 24n * 60n * 60n);
+    setDisputeStart(0n);
+    setBNB_FEE(0n);
+    setEscrowBnbBalance(0n);
+    setTokenApprovedOnce(false);
+    setRole('unset');
+    setStatus('Connect your wallet');
   };
 
   // ====== ENHANCEMENT: prevent wrong token selection ======
@@ -367,6 +396,68 @@ export default function App() {
   };
 
   const bscanTx = (hash: string) => `https://bscscan.com/tx/${hash}`;
+
+  // ===== FINAL: Create New Escrow + Auto-Detect & Load =====
+  const createNewEscrow = async () => {
+    try {
+      if (!wallet || !address) throw new Error('Connect your wallet first');
+      if (!isValidEthereumAddress(freelancerAddr)) throw new Error('Enter a valid freelancer address');
+      if (!BOT_ORACLE_ADDRESS || !isValidEthereumAddress(BOT_ORACLE_ADDRESS)) {
+        throw new Error('Bot oracle address not configured');
+      }
+
+      const tokenAddr = settlementToken === 'USDT' ? USDT : USDC;
+
+      await ensureBscTestnet();  // ← Change to ensureBscMainnet on mainnet
+
+      setStatus('Creating escrow... Please confirm in wallet');
+
+      const hash = await wallet.writeContract({
+        address: FACTORY,
+        abi: factoryAbi as any,
+        functionName: 'createJob',
+        args: [address, freelancerAddr, tokenAddr, BOT_ORACLE_ADDRESS],
+        account: address,
+      });
+
+      setStatus(`Escrow deploying... Tx: ${hash} (waiting for confirmation)`);
+
+      const receipt = await pub!.waitForTransactionReceipt({ hash });
+
+      if (receipt.status === 'success') {
+        let newEscrowAddr: Address | null = null;
+
+        const factoryInterface = new ethers.Interface(factoryAbi as any);
+
+        for (const log of receipt.logs) {
+          try {
+            const parsed = factoryInterface.parseLog(log);
+            if (parsed?.name === 'JobCreated') {
+              newEscrowAddr = parsed.args[0] as Address;
+              break;
+            }
+          } catch {
+            // Ignore non-matching logs
+          }
+        }
+
+        if (newEscrowAddr && isValidEthereumAddress(newEscrowAddr)) {
+          setEscrow(newEscrowAddr);
+          setFreelancerAddr('');
+          setSettlementToken('USDT');
+          setStatus(`Success! New escrow loaded: ${newEscrowAddr}`);
+          await refreshRoleAndState(newEscrowAddr, address);
+        } else {
+          setStatus(`Success! Tx: ${hash}\nCould not auto-detect address — copy from bscscan and paste above.`);
+        }
+      } else {
+        setStatus('Transaction failed or reverted');
+      }
+    } catch (e: any) {
+      setStatus(`Failed: ${e?.shortMessage || e?.message || e}`);
+      setPendingApproval(false);
+    }
+  };
 
   // ===== client actions =====
   const approveSpending = async () => {
@@ -758,6 +849,55 @@ export default function App() {
         <div className="banner">
           <b>Next Step:</b> {nextAction}
         </div>
+        
+        {/* NEW: Visual separation from Next Step banner */}
+        {address && !escrow && (
+          <>
+            <div className="nextStepToCreateSpacer" />
+            
+            <div className="formGroup">
+              <h4 className="sectionHeader">Create New Escrow</h4>
+              <div className="createEscrowSeparator" />
+              <div className="settingsGrid">
+                <div>
+                  <label htmlFor="freelancerAddr">Freelancer Address</label><br/>
+                  <input
+                    id="freelancerAddr"
+                    placeholder="0x..."
+                    value={freelancerAddr}
+                    onChange={e => setFreelancerAddr(e.target.value.trim())}
+                    className="fullWidth"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="createSettlement">Settlement Token</label><br/>
+                  <select
+                    id="createSettlement"
+                    value={settlementToken}
+                    onChange={e => setSettlementToken(e.target.value as 'USDT'|'USDC')}
+                  >
+                    <option>USDT</option>
+                    <option>USDC</option>
+                  </select>
+                </div>
+              </div>
+              <div className="buttonGroup">
+                <button 
+                  onClick={createNewEscrow}
+                  disabled={!isValidEthereumAddress(freelancerAddr) || pendingApproval}
+                  className="cta"
+                >
+                  Create Escrow (you pay gas)
+                </button>
+                {!isValidEthereumAddress(freelancerAddr) && freelancerAddr && (
+                  <div className="hint invalidHint">
+                    Invalid freelancer address
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         {showClient && (!clientHasDeposit || !clientPaidFee) && (
           <div className="settingsGrid">
