@@ -209,6 +209,22 @@ export default function App() {
   useEffect(() => { setPub(createPublicClient({ chain: bsc, transport: http(RPC) })); }, []);
   useEffect(() => { setTokenApprovedOnce(false); }, [escrow]);
 
+  // ===== DEEP LINK FIX FOR TELEGRAM MOBILE TX PROMPTS =====
+  useEffect(() => {
+    const originalOpen = window.open;
+    window.open = (url, target, features) => {
+      if (url && typeof url === 'string' && url.startsWith('wc:')) {
+        WebApp.openLink(url);
+        return null;
+      }
+      return originalOpen(url, target, features);
+    };
+
+    return () => {
+      window.open = originalOpen; // Clean up
+    };
+  }, []);
+
   // ===== connect / disconnect =====
   const connect = async () => {
     try {
@@ -239,7 +255,7 @@ export default function App() {
           params: [{ chainId: BSC_MAINNET_HEX }]
         });
       });
-      
+
       const cid = (provider.chainId ?? await provider.request?.({ method: 'eth_chainId' })) as any;
       setChainId(normalizeChainId(cid));
 
