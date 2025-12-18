@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { ethers } from 'ethers';
 import './App.css';
 
-import WebApp from '@twa-dev/sdk';
 import EthereumProvider from '@walletconnect/ethereum-provider';
 import {
   Address,
@@ -104,7 +103,9 @@ export default function App() {
   const [address, setAddress] = useState<Address>();
   const [pub, setPub] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
-  const [wc, setWc] = useState<any>(null);
+  const [provider, setProvider] = useState<any>(null); // Raw provider (ethereum or WC)
+  const [isWalletConnect, setIsWalletConnect] = useState(false);
+  const [wc, setWc] = useState<any>(null); // Only for WC
   const [freelancerAddr, setFreelancerAddr] = useState('');
   const [settlementToken, setSettlementToken] = useState<'USDT'|'USDC'>('USDT');
 
@@ -165,8 +166,7 @@ export default function App() {
     } else {
       setEscrow(undefined);
       resetEscrowData();
-      WebApp.HapticFeedback.notificationOccurred('error');
-      WebApp.showAlert('Invalid escrow address.\nPlease enter a valid 0x Ethereum address (42 characters).');
+      alert('Invalid escrow address.\nPlease enter a valid 0x Ethereum address (42 characters).');
     }
   };
 
@@ -196,8 +196,7 @@ export default function App() {
   // ====== ENHANCEMENT: prevent wrong token selection ======
   const handleSettlementChange = (newToken: 'USDT' | 'USDC') => {
     if (escrowTokenSymbol && escrowTokenSymbol !== newToken) {
-      WebApp.HapticFeedback.notificationOccurred('warning');
-      WebApp.showAlert(`This escrow only accepts ${escrowTokenSymbol}.\nYou cannot change the settlement token.`);
+      alert(`This escrow only accepts ${escrowTokenSymbol}.\nYou cannot change the settlement token.`);
       setSettlement(escrowTokenSymbol);
       return;
     }
@@ -205,66 +204,56 @@ export default function App() {
   };
 
   // ===== boot =====
-  useEffect(() => { WebApp.ready(); WebApp.expand(); }, []);
   useEffect(() => { setPub(createPublicClient({ chain: bsc, transport: http(RPC) })); }, []);
   useEffect(() => { setTokenApprovedOnce(false); }, [escrow]);
-
-  // ===== DEEP LINK FIX FOR TELEGRAM MOBILE TX PROMPTS =====
-  useEffect(() => {
-    const originalOpen = window.open;
-    window.open = (url, target, features) => {
-      if (url && typeof url === 'string' && url.startsWith('wc:')) {
-        WebApp.openLink(url);
-        return null;
-      }
-      return originalOpen(url, target, features);
-    };
-
-    return () => {
-      window.open = originalOpen; // Clean up
-    };
-  }, []);
 
   // ===== connect / disconnect =====
   const connect = async () => {
     try {
       setStatus('Connecting wallet...');
-      const provider = await EthereumProvider.init({
-        projectId: WC_ID,
-        chains: [bsc.id],
-        showQrModal: true
-      });
-      await provider.enable();
-      setWc(provider);
+      let rawProvider: any;
 
-      provider.on?.('chainChanged', (cid: any) => setChainId(normalizeChainId(cid)));
-      provider.on?.('accountsChanged', (accs: string[]) => {
-        if (Array.isArray(accs) && accs[0]) setAddress(accs[0] as Address);
-      });
-
-      await provider.request?.({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: BSC_MAINNET_HEX }]
-      }).catch(async () => {
-        await provider.request?.({
-          method: 'wallet_addEthereumChain',
-          params: [BSC_MAINNET_PARAMS]
+      if (window.ethereum) {
+        rawProvider = window.ethereum;
+        setIsWalletConnect(false);
+        await rawProvider.request({ method: 'eth_requestAccounts' });
+      } else {
+        // Fallback to WalletConnect
+        const wcProvider = await EthereumProvider.init({
+          projectId: WC_ID,
+          chains: [bsc.id],
+          showQrModal: true
         });
-        await provider.request?.({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: BSC_MAINNET_HEX }]
-        });
+        await wcProvider.enable();
+        rawProvider = wcProvider;
+        setWc(wcProvider);
+        setIsWalletConnect(true);
+      }
+
+      setProvider(rawProvider);
+
+      // Events
+      rawProvider.on('chainChanged', (cid: any) => setChainId(normalizeChainId(cid)));
+      rawProvider.on('accountsChanged', (accs: string[]) => {
+        if (Array.isArray(accs) && accs[0]) {
+          setAddress(accs[0] as Address);
+        } else {
+          hardDisconnect();
+        }
       });
 
-      const cid = (provider.chainId ?? await provider.request?.({ method: 'eth_chainId' })) as any;
+      await ensureBsc(rawProvider);
+
+      const cid = await rawProvider.request({ method: 'eth_chainId' });
       setChainId(normalizeChainId(cid));
 
-      const addr = (provider.accounts?.[0]) as Address;
-      if (!addr) throw new Error('WalletConnect returned no accounts');
+      const accounts = await rawProvider.request({ method: 'eth_accounts' });
+      const addr = accounts[0] as Address;
+      if (!addr) throw new Error('No accounts found');
 
       const client = createWalletClient({
         chain: bsc,
-        transport: custom(provider),
+        transport: custom(rawProvider),
         account: addr
       });
 
@@ -278,9 +267,9 @@ export default function App() {
 
   const hardDisconnect = async () => {
     try {
-      if (wc) {
-        try { await wc.disconnect(); } catch {}
-        try { await wc.cleanup?.(); } catch {}
+      if (isWalletConnect && wc) {
+        await wc.disconnect();
+        await wc.cleanup?.();
       }
       const nuke = (store: Storage) => {
         for (let i = 0; i < store.length; i++) {
@@ -290,31 +279,44 @@ export default function App() {
       };
       nuke(localStorage); nuke(sessionStorage);
     } finally {
-      setAddress(undefined); setWallet(undefined); setWc(null); setRole('unset'); setChainId('unknown');
+      setAddress(undefined); setWallet(undefined); setWc(null); setProvider(null); setIsWalletConnect(false);
+      setRole('unset'); setChainId('unknown');
       setEscrow(undefined); setEscrowClient(undefined); setEscrowFreelancer(undefined); setEscrowOracle(undefined);
       setEscrowToken(undefined); setEscrowState(undefined); setDepositAmount(0n); setEscrowBnbBalance(0n);
       setTokenApprovedOnce(false); setEscrowTokenDecimals(undefined);
-      setStatus('Disconnected. Open your wallet, select the account you want, then tap Connect Wallet again.');
+      setStatus('Disconnected. Connect your wallet again.');
     }
   };
 
   useEffect(() => {
-    const check = async () => { if (wc) setChainId(normalizeChainId(await wc.request({ method: 'eth_chainId' }).catch(() => 'unknown'))); };
-    check(); const h = setInterval(check, 5000); return () => clearInterval(h);
-  }, [wc]);
+    const check = async () => {
+      if (provider) {
+        const cid = await provider.request({ method: 'eth_chainId' }).catch(() => 'unknown');
+        setChainId(normalizeChainId(cid));
+      }
+    };
+    check();
+    const h = setInterval(check, 5000);
+    return () => clearInterval(h);
+  }, [provider]);
 
   const tokenAddr = useMemo(() => settlement === 'USDT' ? USDT : USDC, [settlement]);
   const readDecimals = async (token: Address) => await pub!.readContract({ address: token, abi: erc20Abi, functionName: 'decimals' }) as number;
 
-  const ensureBsc = async () => {
-    if (!wc) throw new Error('Wallet not connected');
-    if (normalizeChainId(chainId) === BSC_MAINNET_HEX) return;
-    try { await wc.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: BSC_MAINNET_HEX }] }); }
-    catch {
-      await wc.request({ method: 'wallet_addEthereumChain', params: [BSC_MAINNET_PARAMS] });
-      await wc.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: BSC_MAINNET_HEX }] });
+  const ensureBsc = async (prov: any) => {
+    const currentChain = await prov.request({ method: 'eth_chainId' }).catch(() => 'unknown');
+    if (normalizeChainId(currentChain) === BSC_MAINNET_HEX) return;
+    try {
+      await prov.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: BSC_MAINNET_HEX }] });
+    } catch (err: any) {
+      if (err.code === 4902 || err.code === -32601) { // Chain not added or method not supported
+        await prov.request({ method: 'wallet_addEthereumChain', params: [BSC_MAINNET_PARAMS] });
+        await prov.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: BSC_MAINNET_HEX }] });
+      } else {
+        throw err;
+      }
     }
-    setChainId(normalizeChainId(await wc.request({ method: 'eth_chainId' }).catch(() => 'unknown')));
+    setChainId(normalizeChainId(await prov.request({ method: 'eth_chainId' }).catch(() => 'unknown')));
   };
 
   const clientHasDeposit = depositAmount > 0n;
@@ -391,24 +393,27 @@ export default function App() {
 
   useEffect(() => { if (escrow) refreshRoleAndState(escrow, address); }, [escrow, address]);
 
-  const tryOpenWallet = (provider?: any) => {
-    try {
-      const uri = provider?.connector?.uri || provider?.wc?.uri;
+  const tryOpenWallet = () => {
+    if (isWalletConnect && wc) {
+      const uri = wc?.connector?.uri;
       if (uri) {
         const base = WALLET_DEEPLINK || 'wc:';
         window.open(`${base}${encodeURIComponent(uri)}`, '_blank');
-        return true;
+        return;
       }
-    } catch {}
-    if (WALLET_DEEPLINK) { try { window.open(WALLET_DEEPLINK, '_blank'); return true; } catch {} }
-    try { if ((window as any).ethereum?.request) (window as any).ethereum.request({ method: 'eth_requestAccounts' }).catch(()=>{}); return true; } catch {}
-    return false;
+      if (WALLET_DEEPLINK) {
+        window.open(WALLET_DEEPLINK, '_blank');
+        return;
+      }
+    } else if (window.ethereum) {
+      window.ethereum.request({ method: 'eth_requestAccounts' }).catch(() => {});
+    }
   };
 
   const withPending = async (fn: () => Promise<void>) => {
     setPendingApproval(true);
-    try { tryOpenWallet(wc); } catch {}
-    try { await fn(); } finally { setTimeout(() => setPendingApproval(false), 1200); }
+    if (isWalletConnect) tryOpenWallet();
+    try { await fn(); } catch (e: any) { setStatus(`Action failed: ${e?.shortMessage || e?.message || e}`); } finally { setTimeout(() => setPendingApproval(false), 1200); }
   };
 
   const bscanTx = (hash: string) => `https://bscscan.com/tx/${hash}`;
@@ -424,7 +429,7 @@ export default function App() {
 
       const tokenAddr = settlementToken === 'USDT' ? USDT : USDC;
 
-      await ensureBsc();
+      await ensureBsc(provider);
 
       setStatus('Creating escrow... Please confirm in wallet');
 
@@ -447,7 +452,7 @@ export default function App() {
 
         for (const log of receipt.logs) {
           try {
-            const parsed = factoryInterface.parseLog(log);
+            const parsed = factoryInterface.parseLog({ topics: log.topics, data: log.data });
             if (parsed?.name === 'JobCreated') {
               newEscrowAddr = parsed.args[0] as Address;
               break;
@@ -480,7 +485,7 @@ export default function App() {
     try {
       if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
       if (role !== 'client') throw new Error('Only the client can approve token spending');
-      await ensureBsc();
+      await ensureBsc(provider);
       const token = tokenAddr;
       const dec = await readDecimals(token);
       const amt = parseUnits(amount || '0', dec);
@@ -505,7 +510,7 @@ export default function App() {
       if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
       if (role !== 'client') throw new Error('Only the client can deposit');
       if (escrowState !== 0) throw new Error('Deposit allowed only in Funding state');
-      await ensureBsc();
+      await ensureBsc(provider);
       const token = tokenAddr;
       const dec = await readDecimals(token);
       const amt = parseUnits(amount || '0', dec);
@@ -529,7 +534,7 @@ export default function App() {
       if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
       if (role !== 'client') throw new Error('Only the client can pay fee');
       if (escrowState !== 0) throw new Error('Fee allowed only in Funding state');
-      await ensureBsc();
+      await ensureBsc(provider);
       await withPending(async () => {
         const hash = await wallet.writeContract({
           address: escrow!, abi: escrowAbi as any, functionName: 'payFee',
@@ -545,17 +550,17 @@ export default function App() {
     }
   };
 
-  const requestRevision = async (cid: string) => {
+  const requestRevision = async (msg: string) => {
     try {
       if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
       if (role !== 'client') throw new Error('Only the client can request revision');
       if (escrowState !== 2) throw new Error('Revision only after proof is Submitted');
       if (revisions >= Number(MAX_REVISIONS)) throw new Error('Max revisions reached');
-      await ensureBsc();
+      await ensureBsc(provider);
       await withPending(async () => {
         const hash = await wallet.writeContract({
           address: escrow!, abi: escrowAbi as any, functionName: 'requestRevision',
-          args: [cid], account: address
+          args: [msg], account: address
         });
         setStatus(`RequestRevision tx: ${hash} (${bscanTx(hash)})`);
         await new Promise(r => setTimeout(r, 4000));
@@ -572,7 +577,7 @@ export default function App() {
       if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
       if (role !== 'client') throw new Error('Only the client can approve');
       if (escrowState !== 2) throw new Error('Approve only when Submitted');
-      await ensureBsc();
+      await ensureBsc(provider);
       await withPending(async () => {
         const hash = await wallet.writeContract({
           address: escrow!, abi: escrowAbi as any, functionName: 'approve',
@@ -588,7 +593,7 @@ export default function App() {
     }
   };
 
-    const raiseDispute = async () => {
+  const raiseDispute = async () => {
     try {
       if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
       if (role !== 'client' && role !== 'freelancer') {
@@ -596,7 +601,7 @@ export default function App() {
       }
       if (!canRaiseDispute) throw new Error('Dispute allowed only in Submitted or Revised state');
       
-      await ensureBsc();
+      await ensureBsc(provider);
       await withPending(async () => {
         const hash = await wallet.writeContract({
           address: escrow!,
@@ -620,7 +625,7 @@ export default function App() {
       if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
       if (role !== 'client') throw new Error('Only the client can refund-no-start');
       if (!canRefundNoStart) throw new Error('Refund only after start deadline if not started');
-      await ensureBsc();
+      await ensureBsc(provider);
       await withPending(async () => {
         const hash = await wallet.writeContract({
           address: escrow!, abi: escrowAbi as any, functionName: 'refundNoStart',
@@ -641,7 +646,7 @@ export default function App() {
       if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
       if (role !== 'freelancer') throw new Error('Only the freelancer can start the job');
       if (!canFreelancerStart) throw new Error('Start only after client funded deposit + fee, before start deadline');
-      await ensureBsc();
+      await ensureBsc(provider);
       await withPending(async () => {
         const hash = await wallet.writeContract({
           address: escrow!, abi: escrowAbi as any, functionName: 'startJob',
@@ -666,12 +671,11 @@ export default function App() {
 
       const cid = normalizeAndValidateCid(rawInput);
       if (!cid) {
-        WebApp.HapticFeedback.notificationOccurred('error');
-        WebApp.showAlert('Invalid IPFS CID!\n\nMust be exactly 46 characters.\n\nCorrect examples:\n• bafybei... (46 chars)\n• ipfs://bafybei...');
+        alert('Invalid IPFS CID!\n\nMust be exactly 46 characters.\n\nCorrect examples:\n• bafybei... (46 chars)\n• ipfs://bafybei...');
         return;
       }
 
-      await ensureBsc();
+      await ensureBsc(provider);
       await withPending(async () => {
         const hash = await wallet.writeContract({
           address: escrow!, abi: escrowAbi as any, functionName: 'submitProof',
@@ -692,7 +696,7 @@ export default function App() {
       if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
       if (role !== 'oracle') throw new Error('Only the oracle can settle disputes');
       if (!canOracleSettle) throw new Error('Settle only after grace period in Disputed state');
-      await ensureBsc();
+      await ensureBsc(provider);
       await withPending(async () => {
         const hash = await wallet.writeContract({
           address: escrow!, abi: escrowAbi as any, functionName: 'settleDispute',
@@ -761,8 +765,7 @@ export default function App() {
 
     const cid = normalizeAndValidateCid(input);
     if (!cid) {
-      WebApp.HapticFeedback.notificationOccurred('error');
-      WebApp.showAlert('Invalid CID!\n\nMust be exactly 59 characters.\n\nCorrect examples:\n• bafybei...\n• ipfs://bafybei...');
+      alert('Invalid CID!\n\nMust be exactly 59 characters.\n\nCorrect examples:\n• bafybei...\n• ipfs://bafybei...');
       return;
     }
 
@@ -793,7 +796,7 @@ export default function App() {
   })();
 
   return (
-    <div className="container" role="application" aria-label=" Forje Mini App">
+    <div className="container" role="application" aria-label="Forje App">
       <div className="bgBlockchain" aria-hidden="true" />
 
       <header className="topBar">
@@ -811,20 +814,12 @@ export default function App() {
               </div>
             </div>
             <div className="buttonsStack">
-              <button className="secondary" onClick={() => tryOpenWallet(wc)}>Open Wallet</button>
               <button className="danger" onClick={hardDisconnect}>Disconnect</button>
-              {wrongNet && <button className="tiny" onClick={ensureBsc}>Switch to BSC</button>}
+              {wrongNet && <button className="tiny" onClick={() => ensureBsc(provider)}>Switch to BSC</button>}
             </div>
           </div>
         )}
       </header>
-
-      {pendingApproval && (
-        <div className="pendingBanner" role="status" aria-live="polite">
-          <span>Approval pending — please foreground your wallet to confirm the transaction.</span>
-          <button className="openWalletInline" onClick={() => tryOpenWallet(wc)}>Open Wallet</button>
-        </div>
-      )}
 
       <main className="main">
         <h3>Forje Gigs</h3>
@@ -949,7 +944,7 @@ export default function App() {
               <button disabled={!canRefundNoStart} onClick={refundNoStart}>Refund (No Start)</button>
               <button disabled={!canClientRevise} onClick={requestRevisionPrompt}>Request Revision</button>
               <button disabled={!canClientApprove} onClick={approveJob}>Approve (release fund)</button>
-                            <div>
+              <div>
                 <button 
                   className="danger" 
                   disabled={!canRaiseDispute} 
@@ -962,7 +957,7 @@ export default function App() {
                     Use the raise dispute button only if the freelancer is unresponsive, abusive, or violating terms after revision request.
                   </div>
                 )}
-                   </div>
+              </div>
             </div>
           </>
         )}
@@ -989,7 +984,7 @@ export default function App() {
                       <li>Choose Private or Public upload and get it uploaded.</li>
                       <li>Copy the file CID from the Private or Public tab.</li>
                       <li>Paste the CID here (with or without ipfs://) and tap OK.</li>
-                      <li>If your wallet does come up, Look out for the "Open wallet" popup to manually foreground your wallet.</li>
+                      <li>If your wallet doesn't pop up, check your extension or app.</li>
                     </ol>
                   </div>
                 )}
