@@ -508,14 +508,14 @@ select {
 
 /* Active state — default blue */
 .actionGrid button:not(:disabled) {
-  background: linear-gradient(135deg, #0066ff, #3388ff);
+  background: linear-gradient(135deg, #33dfd6, #317de7);
   color: white;
   box-shadow: 0 4px 14px rgba(0, 102, 255, 0.25);
 }
 
 /* Active danger buttons (Raise Dispute, etc.) */
 .actionGrid button.danger:not(:disabled) {
-  background: linear-gradient(135deg, #ff3333, #ff5555);
+  background: linear-gradient(135deg, #9e2d2d, #9c4848);
   box-shadow: 0 4px 14px rgba(255, 51, 51, 0.3);
 }
 

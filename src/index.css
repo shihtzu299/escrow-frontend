@@ -1,0 +1,4 @@
+@import "tailwindcss";
+
+/* Keep importing your existing App.css to preserve all current styles */
+@import './App.css';

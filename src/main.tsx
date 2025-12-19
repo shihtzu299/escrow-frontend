@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './app';
 import type { ComponentType } from 'react';
+import './index.css';
 
 const AppComponent = (App as unknown) as ComponentType<any>;
 

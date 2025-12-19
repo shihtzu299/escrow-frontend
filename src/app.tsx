@@ -14,6 +14,8 @@ import {
   parseUnits
 } from 'viem';
 import { bsc } from 'viem/chains';
+import { Toaster, toast } from 'react-hot-toast';
+import { FaWallet, FaSyncAlt, FaExclamationTriangle, FaCheckCircle, FaCopy, FaExternalLinkAlt } from 'react-icons/fa';
 
 import factoryAbi from './abis/ForjeEscrowFactory.json';
 import escrowAbi from './abis/ForjeGigEscrow.json';
@@ -46,6 +48,16 @@ const STATE_LABEL: Record<number, string> = {
   5: 'Disputed',
   6: 'Resolved'
 };
+
+const STEPS = [
+  { label: 'Funding', state: 0 },
+  { label: 'Started', state: 1 },
+  { label: 'Submitted', state: 2 },
+  { label: 'Revised', state: 4 },
+  { label: 'Approved', state: 3 },
+  { label: 'Disputed', state: 5 },
+  { label: 'Resolved', state: 6 },
+];
 
 const BSC_MAINNET_HEX = '0x38'; // 56
 const BSC_MAINNET_PARAMS = {
@@ -166,7 +178,7 @@ export default function App() {
     } else {
       setEscrow(undefined);
       resetEscrowData();
-      alert('Invalid escrow address.\nPlease enter a valid 0x Ethereum address (42 characters).');
+      toast.error('Invalid escrow address.');
     }
   };
 
@@ -196,7 +208,7 @@ export default function App() {
   // ====== ENHANCEMENT: prevent wrong token selection ======
   const handleSettlementChange = (newToken: 'USDT' | 'USDC') => {
     if (escrowTokenSymbol && escrowTokenSymbol !== newToken) {
-      alert(`This escrow only accepts ${escrowTokenSymbol}.\nYou cannot change the settlement token.`);
+      toast.error(`This escrow only accepts ${escrowTokenSymbol}.`);
       setSettlement(escrowTokenSymbol);
       return;
     }
@@ -260,8 +272,10 @@ export default function App() {
       setWallet(client);
       setAddress(addr);
       setStatus(`Connected: ${addr}`);
+      toast.success(`Connected`);
     } catch (e: any) {
       setStatus(`Connect failed: ${e?.message || e}`);
+      toast.error(`Connect failed`);
     }
   };
 
@@ -285,6 +299,7 @@ export default function App() {
       setEscrowToken(undefined); setEscrowState(undefined); setDepositAmount(0n); setEscrowBnbBalance(0n);
       setTokenApprovedOnce(false); setEscrowTokenDecimals(undefined);
       setStatus('Disconnected. Connect your wallet again.');
+      toast.success('Disconnected');
     }
   };
 
@@ -432,6 +447,7 @@ export default function App() {
       await ensureBsc(provider);
 
       setStatus('Creating escrow... Please confirm in wallet');
+      toast.success('Creating escrow...');
 
       const hash = await wallet.writeContract({
         address: FACTORY,
@@ -467,15 +483,17 @@ export default function App() {
           setFreelancerAddr('');
           setSettlementToken('USDT');
           setStatus(`Success! New escrow loaded: ${newEscrowAddr}`);
+          toast.success(`New escrow loaded`);
           await refreshRoleAndState(newEscrowAddr, address);
         } else {
           setStatus(`Success! Tx: ${hash}\nCould not auto-detect address — copy from bscscan and paste above.`);
         }
       } else {
-        setStatus('Transaction failed or reverted');
+        toast.error('Transaction failed or reverted');
       }
     } catch (e: any) {
       setStatus(`Failed: ${e?.shortMessage || e?.message || e}`);
+      toast.error(`Failed`);
       setPendingApproval(false);
     }
   };
@@ -671,7 +689,7 @@ export default function App() {
 
       const cid = normalizeAndValidateCid(rawInput);
       if (!cid) {
-        alert('Invalid IPFS CID!\n\nMust be exactly 46 characters.\n\nCorrect examples:\n• bafybei... (46 chars)\n• ipfs://bafybei...');
+        toast.error('Invalid IPFS CID!\n\nMust be 59 characters.\n\nCorrect examples:\n• bafybei... (46 chars)\n• ipfs://bafybei...');
         return;
       }
 
@@ -755,7 +773,7 @@ export default function App() {
     const daysStr = prompt('How many days will you take to complete this job? (whole number)');
     if (!daysStr) return;
     const days = Number(daysStr);
-    if (Number.isNaN(days) || days <= 0) return alert('Enter a valid number of days');
+    if (Number.isNaN(days) || days <= 0) return toast.error('Enter a valid number of days');
     await startJob(days);
   };
 
@@ -765,7 +783,7 @@ export default function App() {
 
     const cid = normalizeAndValidateCid(input);
     if (!cid) {
-      alert('Invalid CID!\n\nMust be exactly 59 characters.\n\nCorrect examples:\n• bafybei...\n• ipfs://bafybei...');
+      toast.error('Invalid CID!\n\nMust be exactly 59 characters.\n\nCorrect examples:\n• bafybei...\n• ipfs://bafybei...');
       return;
     }
 
@@ -798,33 +816,140 @@ export default function App() {
   return (
     <div className="container" role="application" aria-label="Forje App">
       <div className="bgBlockchain" aria-hidden="true" />
+      
+      <Toaster 
+        position="top-center"
+        toastOptions={{
+          duration: 5000,
+          style: {
+            background: '#1f2937',
+            color: '#f9fafb',
+            border: '1px solid #3b82f6',
+            borderRadius: '12px',
+          },
+        }}
+      />
 
-      <header className="topBar">
-        {!address ? (
-          <button className="cta" onClick={connect}>Connect Wallet</button>
-        ) : (
-          <div className="topButtons">
-            <div className="addrCol">
-              <div className="smallText">Connected</div>
-              <div className="mono small">{address}</div>
-              <div className="smallText">Role: <b>{roleLabel[role]}</b></div>
-              <div className="smallText">
-                Network:&nbsp;
-                {chainId === 'unknown' ? '—' : (!wrongNet ? '🟢 BSC' : '🔴 Wrong Network')}
-              </div>
-            </div>
-            <div className="buttonsStack">
-              <button className="danger" onClick={hardDisconnect}>Disconnect</button>
-              {wrongNet && <button className="tiny" onClick={() => ensureBsc(provider)}>Switch to BSC</button>}
-            </div>
-          </div>
-        )}
-      </header>
+<header className="topBar">
+  {!address ? (
+    <div className="text-center py-12 px-6 max-w-2xl mx-auto">
+      <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent mb-6">
+        Forje Gigs
+      </h1>
+      <p className="text-gray-300 text-lg mb-10 max-w-md mx-auto leading-relaxed">
+        Secure, trustless escrow for freelance payments on BNB Smart Chain using USDT/USDC.
+      </p>
+      <button 
+        className="cta flex items-center justify-center gap-4 text-xl mx-auto px-10 py-5 rounded-2xl shadow-2xl hover:shadow-green-500/30 transition-all"
+        onClick={connect}
+      >
+        <FaWallet size={32} />
+        Connect Wallet to Begin
+      </button>
+      <p className="text-gray-500 text-sm mt-8">
+        Supports MetaMask, Trust Wallet, WalletConnect and all BSC wallets
+      </p>
+    </div>
+  ) : (
+    <div className="topButtons">
+      <div className="addrCol">
+        <div className="smallText">Connected</div>
+        <div className="mono small">{address}</div>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-xs text-gray-400">Role:</span>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+            role === 'client' ? 'bg-blue-600/70 text-blue-100' :
+            role === 'freelancer' ? 'bg-green-600/70 text-green-100' :
+            role === 'oracle' ? 'bg-purple-600/70 text-purple-100' :
+            role === 'unknown' ? 'bg-gray-600 text-gray-300' :
+            'bg-gray-700 text-gray-400'
+          }`}>
+            {roleLabel[role]}
+          </span>
+        </div>
+        <div className="smallText">
+          Network:&nbsp;
+          {chainId === 'unknown' ? '—' : (!wrongNet ? '🟢 BSC' : '🔴 Wrong Network')}
+        </div>
+      </div>
+      <div className="buttonsStack">
+        <button className="danger flex items-center justify-center gap-2" onClick={hardDisconnect}>
+          <FaWallet size={18} />
+          Disconnect
+        </button>
+        {wrongNet && <button className="tiny" onClick={() => ensureBsc(provider)}>Switch to BSC</button>}
+      </div>
+    </div>
+  )}
+</header>
 
       <main className="main">
-        <h3>Forje Gigs</h3>
+        {escrow && escrowState !== undefined && (
+        <div className="mt-6 mb-8 px-4">
+          <div className="flex items-center justify-between relative">
+            {STEPS.map((step, index) => (
+              <div key={step.state} className="flex-1 relative">
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                      escrowState === step.state
+                        ? 'bg-green-500 text-white shadow-lg shadow-green-500/50'
+                        : escrowState > step.state
+                        ? 'bg-green-600/70 text-white'
+                        : 'bg-gray-700 text-gray-400'
+                    }`}
+                  >
+                    {escrowState > step.state ? (
+                      <FaCheckCircle size={20} />
+                    ) : (
+                      index + 1
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs text-center text-gray-300">
+                    {step.label}
+                  </p>
+                </div>
 
-        <div className="formGroup">
+                {/* Line between steps */}
+                {index < STEPS.length - 1 && (
+                  <div
+                    className={`absolute top-6 left-12 right-0 h-1 -z-10 transition-all ${
+                      escrowState > step.state ? 'bg-green-500' : 'bg-gray-700'
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        )}
+
+       <div className="flex gap-3 items-end">
+         <div className="flex-1">
+           <label htmlFor="escrowAddress" className="block text-sm text-gray-400 mb-1">Escrow Address</label>
+           <input
+             id="escrowAddress"
+             placeholder="0x..."
+             value={escrow || ''}
+             onChange={e => handleEscrowChange(e.target.value)}
+             className="fullWidth text-base py-3 px-4"
+           />
+         </div>
+         {escrow && (
+           <button
+             onClick={() => {
+               navigator.clipboard.writeText(escrow);
+             toast.success('Escrow address copied!');
+             }}
+             className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center gap-2 whitespace-nowrap"
+           >
+             <FaCopy size={18} />
+             Copy
+           </button>
+         )}
+       </div>
+
+        <div className="formGroup bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
           <label htmlFor="escrowAddress">Escrow Address</label>
           <input
             id="escrowAddress"
@@ -834,7 +959,7 @@ export default function App() {
             className="fullWidth"
           />
           <div className="buttonGroup">
-            <button onClick={readStateAll}>Refresh Status</button>
+            <button className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg" onClick={readStateAll}><FaSyncAlt size={18} />Refresh Status</button>
           </div>
 
           {escrowClient && escrowFreelancer && (
@@ -866,7 +991,7 @@ export default function App() {
           <>
             <div className="nextStepToCreateSpacer" />
             
-            <div className="formGroup">
+            <div className="formGroup bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg mt-8">
               <h4 className="sectionHeader">Create New Escrow</h4>
               <div className="createEscrowSeparator" />
               <div className="settingsGrid">
@@ -877,7 +1002,7 @@ export default function App() {
                     placeholder="0x..."
                     value={freelancerAddr}
                     onChange={e => setFreelancerAddr(e.target.value.trim())}
-                    className="fullWidth"
+                    className="fullWidth text-base py-3 px-4"
                   />
                 </div>
                 <div>
@@ -886,6 +1011,7 @@ export default function App() {
                     id="createSettlement"
                     value={settlementToken}
                     onChange={e => setSettlementToken(e.target.value as 'USDT'|'USDC')}
+                    className="fullWidth text-base py-3 px-4"
                   >
                     <option>USDT</option>
                     <option>USDC</option>
@@ -893,13 +1019,14 @@ export default function App() {
                 </div>
               </div>
               <div className="buttonGroup">
-                <button 
-                  onClick={createNewEscrow}
-                  disabled={!isValidEthereumAddress(freelancerAddr) || pendingApproval}
-                  className="cta"
-                >
-                  Forge Escrow
-                </button>
+                 <button 
+                   onClick={createNewEscrow}
+                   disabled={!isValidEthereumAddress(freelancerAddr) || pendingApproval}
+                   className="cta flex items-center justify-center gap-3 text-lg"
+                 >
+                   <FaCheckCircle size={24} />
+                   Forge Escrow
+                 </button>
                 {!isValidEthereumAddress(freelancerAddr) && freelancerAddr && (
                   <div className="hint invalidHint">
                     Invalid freelancer address
@@ -921,13 +1048,13 @@ export default function App() {
             </div>
             <div>
               <label htmlFor="amount">Amount</label><br/>
-              <input id="amount" placeholder="e.g. 10" value={amount} onChange={e => setAmount(e.target.value)} />
+              <input id="amount" placeholder="e.g. 10" value={amount} onChange={e => setAmount(e.target.value)} className="fullWidth text-base py-3 px-4" />
             </div>
           </div>
         )}
 
         {panelShouldShow && (
-          <div className="statusPanel">
+          <div className="statusPanel bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-5 shadow-lg mt-6">
             <div>Deposit: {panelDepositDisplay}</div>
             <div>BNB fee paid: {panelFeePaidDisplay}</div>
             <div>Settlement token: {panelSettlementDisplay}</div>
@@ -936,27 +1063,30 @@ export default function App() {
 
         {showClient && (
           <>
-            <h4 className="sectionHeader">Client Actions</h4>
-            <div className="actionGrid">
-              <button disabled={!canClientApproveToken} onClick={approveSpending}>Approve {settlement}</button>
-              <button disabled={!canClientDeposit} onClick={depositFn}>Deposit</button>
-              <button disabled={!canClientPayFee} onClick={payFee}>Pay Fee ({formatUnits(BNB_FEE || 0n, 18)} BNB)</button>
-              <button disabled={!canRefundNoStart} onClick={refundNoStart}>Refund (No Start)</button>
-              <button disabled={!canClientRevise} onClick={requestRevisionPrompt}>Request Revision</button>
-              <button disabled={!canClientApprove} onClick={approveJob}>Approve (release fund)</button>
-              <div>
-                <button 
-                  className="danger" 
-                  disabled={!canRaiseDispute} 
-                  onClick={raiseDispute}
-                >
-                  Raise Dispute
-                </button>
-                {canRaiseDispute && (
-                  <div className="hint">
-                    Use the raise dispute button only if the freelancer is unresponsive, abusive, or violating terms after revision request.
-                  </div>
-                )}
+            <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
+              <h4 className="sectionHeader text-lg mb-4">Client Actions</h4>
+              <div className="actionGrid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <button disabled={!canClientApproveToken} onClick={approveSpending} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all"><FaCheckCircle size={20} />Approve {settlement}</button>
+                <button disabled={!canClientDeposit} onClick={depositFn} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Deposit</button>
+                <button disabled={!canClientPayFee} onClick={payFee} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Pay Fee ({formatUnits(BNB_FEE || 0n, 18)} BNB)</button>
+                <button disabled={!canRefundNoStart} onClick={refundNoStart} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Refund (No Start)</button>
+                <button disabled={!canClientRevise} onClick={requestRevisionPrompt} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Request Revision</button>
+                <button disabled={!canClientApprove} onClick={approveJob} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Approve (release fund)</button>
+                <div>
+                  <button 
+                    className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all"
+                    disabled={!canRaiseDispute} 
+                    onClick={raiseDispute}
+                  >
+                    <FaExclamationTriangle size={20} />
+                    Raise Dispute
+                  </button>
+                  {canRaiseDispute && (
+                    <div className="hint">
+                      Use the raise dispute button only if the freelancer is unresponsive, abusive, or violating terms after revision request.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </>
@@ -964,13 +1094,13 @@ export default function App() {
 
         {showFreelancer && (
           <>
-            <h4 className="sectionHeader">Freelancer Actions</h4>
-            <div className="actionGrid">
-              <div>
+            <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
+              <h4 className="sectionHeader text-lg mb-4">Freelancer Actions</h4>
+              <div className="actionGrid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <button disabled={!canFreelancerStart} onClick={startJobPrompt}>Start Job</button>
                 {escrowState === 0 && (!clientHasDeposit || !clientPaidFee) && (
                   <div className="hint">Start Job is disabled until the client deposits and pays the fee.</div>
-                )}
+               )}
               </div>
 
               <div>
@@ -996,6 +1126,7 @@ export default function App() {
                   disabled={!canRaiseDispute} 
                   onClick={raiseDispute}
                 >
+                  <FaExclamationTriangle size={20} />
                   Raise Dispute
                 </button>
                 {canRaiseDispute && (
@@ -1010,10 +1141,12 @@ export default function App() {
 
         {showOracle && (
           <>
-            <h4 className="sectionHeader">Oracle Actions</h4>
-            <div className="actionGrid">
-              <button disabled={!canOracleSettle} onClick={() => settleDispute(true)}>Settle: Freelancer Wins</button>
-              <button disabled={!canOracleSettle} onClick={() => settleDispute(false)}>Settle: Client Wins</button>
+            <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
+              <h4 className="sectionHeader text-lg mb-4">Oracle Actions</h4>
+              <div className="actionGrid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <button disabled={!canOracleSettle} onClick={() => settleDispute(true)}>Settle: Freelancer Wins</button>
+                <button disabled={!canOracleSettle} onClick={() => settleDispute(false)}>Settle: Client Wins</button>
+              </div>
             </div>
           </>
         )}
