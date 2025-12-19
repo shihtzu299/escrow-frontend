@@ -16,6 +16,7 @@ import {
 import { bsc } from 'viem/chains';
 import { Toaster, toast } from 'react-hot-toast';
 import { FaWallet, FaSyncAlt, FaExclamationTriangle, FaCheckCircle, FaCopy, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaTelegramPlane, FaTwitter } from 'react-icons/fa';
 
 import factoryAbi from './abis/ForjeEscrowFactory.json';
 import escrowAbi from './abis/ForjeGigEscrow.json';
@@ -832,12 +833,12 @@ export default function App() {
 
 <header className="topBar">
   {!address ? (
-    <div className="text-center py-12 px-6 max-w-2xl mx-auto">
+    <div className="text-center py-12 px-6 max-w-4xl mx-auto">
       <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent mb-6">
         Forje Gigs
       </h1>
       <p className="text-gray-300 text-lg mb-10 max-w-md mx-auto leading-relaxed">
-        Secure, trustless escrow for freelance payments on BNB Smart Chain using USDT/USDC.
+        Secure, trustless escrow for freelance payments on BNB Smart Chain using stablecoins (USDT/USDC).
       </p>
       <button 
         className="cta flex items-center justify-center gap-4 text-xl mx-auto px-10 py-5 rounded-2xl shadow-2xl hover:shadow-green-500/30 transition-all"
@@ -924,42 +925,36 @@ export default function App() {
         </div>
         )}
 
-       <div className="flex gap-3 items-end">
-         <div className="flex-1">
-           <label htmlFor="escrowAddress" className="block text-sm text-gray-400 mb-1">Escrow Address</label>
-           <input
-             id="escrowAddress"
-             placeholder="0x..."
-             value={escrow || ''}
-             onChange={e => handleEscrowChange(e.target.value)}
-             className="fullWidth text-base py-3 px-4"
-           />
-         </div>
-         {escrow && (
-           <button
-             onClick={() => {
-               navigator.clipboard.writeText(escrow);
-             toast.success('Escrow address copied!');
-             }}
-             className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center gap-2 whitespace-nowrap"
-           >
-             <FaCopy size={18} />
-             Copy
-           </button>
-         )}
-       </div>
-
-        <div className="formGroup bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
-          <label htmlFor="escrowAddress">Escrow Address</label>
-          <input
-            id="escrowAddress"
-            placeholder="0x..."
-            value={escrow || ''}
-            onChange={e => handleEscrowChange(e.target.value)}
-            className="fullWidth"
-          />
-          <div className="buttonGroup">
-            <button className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg" onClick={readStateAll}><FaSyncAlt size={18} />Refresh Status</button>
+<div className="formGroup bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg mb-8">
+          <div className="flex gap-3 items-end">
+            <div className="flex-1">
+              <label htmlFor="escrowAddress" className="block text-sm text-gray-400 mb-2">Escrow Address</label>
+              <input
+                id="escrowAddress"
+                placeholder="0x..."
+                value={escrow || ''}
+                onChange={e => handleEscrowChange(e.target.value)}
+                className="fullWidth text-base py-3 px-4"
+              />
+            </div>
+            {escrow && (
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(escrow);
+                  toast.success('Escrow address copied!');
+                }}
+                className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center gap-2 whitespace-nowrap"
+              >
+                <FaCopy size={18} />
+                Copy
+              </button>
+            )}
+          </div>
+          <div className="buttonGroup mt-4">
+            <button className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg" onClick={readStateAll}>
+              <FaSyncAlt size={18} />
+              Refresh Status
+            </button>
           </div>
 
           {escrowClient && escrowFreelancer && (
@@ -1161,6 +1156,45 @@ export default function App() {
           <b>Status:</b> {status}
         </div>
       </main>
+
+      <footer className="mt-16 pb-8 text-center">
+  <p className="text-gray-500 text-sm mb-4">Connect with us</p>
+  <div className="flex justify-center gap-8">
+    <a 
+      href="https://t.me/theforjebot"  // ← Replace with your bot link, e.g., https://t.me/ForjeBot
+      target="_blank" 
+      rel="noopener noreferrer"
+      className="text-blue-400 hover:text-blue-300 transition"
+    >
+      <FaTelegramPlane size={32} />
+      <p className="text-xs mt-1 text-gray-400">Bot</p>
+    </a>
+    
+    <a 
+      href="https://t.me/theforje"  // ← Replace with group invite, e.g., https://t.me/+abc123
+      target="_blank" 
+      rel="noopener noreferrer"
+      className="text-blue-400 hover:text-blue-300 transition"
+    >
+      <FaTelegramPlane size={32} />
+      <p className="text-xs mt-1 text-gray-400">Group</p>
+    </a>
+    
+    <a 
+      href="https://x.com/theforje"  // ← Replace with your X handle, e.g., https://x.com/forjegigs
+      target="_blank" 
+      rel="noopener noreferrer"
+      className="text-white hover:text-gray-300 transition"
+    >
+      <FaTwitter size={32} />
+      <p className="text-xs mt-1 text-gray-400">X</p>
+    </a>
+  </div>
+  
+  <p className="text-gray-600 text-xs mt-8">
+    © 2025 ForjeGigs — Secure Freelance Escrow on BNB Chain
+  </p>
+</footer>
     </div>
   );
 }
