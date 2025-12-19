@@ -1,15 +1,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa'
+import tailwindcss from '@tailwindcss/vite'  // Tailwind v4
+import { VitePWA } from 'vite-plugin-pwa'    // PWA
 
 export default defineConfig({
   plugins: [
     react(),
+    tailwindcss(),  // Keeps your beautiful styles
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       devOptions: {
-        enabled: true  // Enables PWA in dev mode for testing
+        enabled: true
       },
       manifest: {
         name: 'Forje Gigs',
@@ -18,8 +20,6 @@ export default defineConfig({
         theme_color: '#050816',
         background_color: '#050816',
         display: 'standalone',
-        scope: '/',
-        start_url: '/',
         icons: [
           {
             src: 'pwa-192x192.png',
