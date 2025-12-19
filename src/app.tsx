@@ -17,7 +17,6 @@ import { bsc } from 'viem/chains';
 import { Toaster, toast } from 'react-hot-toast';
 import { FaWallet, FaSyncAlt, FaExclamationTriangle, FaCheckCircle, FaCopy, FaExternalLinkAlt } from 'react-icons/fa';
 import { FaTelegramPlane, FaTwitter } from 'react-icons/fa';
-import { useRegisterSW } from 'virtual:pwa-register/react'
 
 import factoryAbi from './abis/ForjeEscrowFactory.json';
 import escrowAbi from './abis/ForjeGigEscrow.json';
