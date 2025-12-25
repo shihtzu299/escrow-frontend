@@ -564,3 +564,57 @@ select {
   word-break: break-word;
   overflow-wrap: break-word;
 }
+
+/* Tab Switcher - clean text tabs */
+.tabSwitcher {
+  display: flex;
+  justify-content: center;
+  gap: 40px; /* closer together */
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+  margin-bottom: 48px; /* space below tabs */
+}
+
+.tabButton {
+  background: none;
+  border: none;
+  padding: 12px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  position: relative;
+  transition: color var(--transition-med);
+}
+
+.tabButton:hover {
+  color: var(--text);
+}
+
+.tabButton::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), #22c55e);
+  transition: width var(--transition-med);
+}
+
+.tabButton:hover::after {
+  width: 100%;
+}
+
+/* Active tab - gradient text + full underline */
+.tabActive {
+  background: linear-gradient(90deg, var(--accent), #22c55e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent; /* fallback */
+}
+
+.tabActive::after {
+  width: 100%;
+}

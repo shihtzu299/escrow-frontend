@@ -153,6 +153,7 @@ export default function App() {
   const [pendingApproval, setPendingApproval] = useState(false);
   const [tokenApprovedOnce, setTokenApprovedOnce] = useState(false);
   const [chainId, setChainId] = useState<string>('unknown');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'myescrows'>('dashboard');
 
   // ====== ENHANCEMENT: escrow token auto-lock ======
   const escrowTokenSymbol = useMemo<'USDT' | 'USDC' | null>(() => {
@@ -484,7 +485,7 @@ export default function App() {
           setFreelancerAddr('');
           setSettlementToken('USDT');
           setStatus(`Success! New escrow loaded: ${newEscrowAddr}`);
-          toast.success(`New escrow loaded`);
+          toast.success(`New escrow loaded!`);
           await refreshRoleAndState(newEscrowAddr, address);
         } else {
           setStatus(`Success! Tx: ${hash}\nCould not auto-detect address — copy from bscscan and paste above.`);
@@ -852,7 +853,8 @@ export default function App() {
       </p>
     </div>
   ) : (
-    <div className="topButtons">
+  <div className="max-w-4xl mx-auto px-6 pt-6">
+    <div className="flex justify-between items-center mb-10">
       <div className="addrCol">
         <div className="smallText">Connected</div>
         <div className="mono small">{address}</div>
@@ -873,19 +875,33 @@ export default function App() {
           {chainId === 'unknown' ? '—' : (!wrongNet ? '🟢 BSC' : '🔴 Wrong Network')}
         </div>
       </div>
-      <div className="buttonsStack">
+      <div className="buttonsStack ml-8"> {/* add ml-8 for space from left */}
         <button className="danger flex items-center justify-center gap-2" onClick={hardDisconnect}>
-          <FaWallet size={18} />
-          Disconnect
+         <FaWallet size={18} />
+         Disconnect
         </button>
         {wrongNet && <button className="tiny" onClick={() => ensureBsc(provider)}>Switch to BSC</button>}
       </div>
     </div>
-  )}
+
+{/* TAB SWITCHER - clean text tabs */}
+<div className="tabSwitcher">
+  <button className={`tabButton ${activeTab === 'dashboard' ? 'tabActive' : ''}`} onClick={() => setActiveTab('dashboard')}>
+    Dashboard
+  </button>
+  <button className={`tabButton ${activeTab === 'myescrows' ? 'tabActive' : ''}`} onClick={() => setActiveTab('myescrows')}>
+    My Escrows
+  </button>
+</div>
+  </div>
+)}
 </header>
 
-      <main className="main">
-        {escrow && escrowState !== undefined && (
+<main className="main max-w-4xl mx-auto px-6 pb-12">
+  {activeTab === 'dashboard' ? (
+    <>
+      {/* ALL YOUR CURRENT DASHBOARD CONTENT - unchanged */}
+      {escrow && escrowState !== undefined && (
         <div className="mt-6 mb-8 px-4">
           <div className="flex items-center justify-between relative">
             {STEPS.map((step, index) => (
@@ -923,201 +939,162 @@ export default function App() {
             ))}
           </div>
         </div>
-        )}
+      )}
 
-<div className="formGroup bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg mb-8">
-          <div className="flex gap-3 items-end">
-            <div className="flex-1">
-              <label htmlFor="escrowAddress" className="block text-sm text-gray-400 mb-2">Escrow Address</label>
-              <input
-                id="escrowAddress"
-                placeholder="0x..."
-                value={escrow || ''}
-                onChange={e => handleEscrowChange(e.target.value)}
-                className="fullWidth text-base py-3 px-4"
-              />
-            </div>
-            {escrow && (
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(escrow);
-                  toast.success('Escrow address copied!');
-                }}
-                className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center gap-2 whitespace-nowrap"
-              >
-                <FaCopy size={18} />
-                Copy
-              </button>
-            )}
+      <div className="formGroup bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg mb-8">
+        <div className="flex gap-3 items-end">
+          <div className="flex-1">
+            <label htmlFor="escrowAddress" className="block text-sm text-gray-400 mb-2">Escrow Address</label>
+            <input
+              id="escrowAddress"
+              placeholder="0x..."
+              value={escrow || ''}
+              onChange={e => handleEscrowChange(e.target.value)}
+              className="fullWidth text-base py-3 px-4"
+            />
           </div>
-          <div className="buttonGroup mt-4">
-            <button className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg" onClick={readStateAll}>
-              <FaSyncAlt size={18} />
-              Refresh Status
+          {escrow && (
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(escrow);
+                toast.success('Escrow address copied!');
+              }}
+              className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center gap-2 whitespace-nowrap"
+            >
+              <FaCopy size={18} />
+              Copy
             </button>
-          </div>
-
-          {escrowClient && escrowFreelancer && (
-            <div className="meta">
-              <div>client: <span className="mono">{escrowClient}</span></div>
-              <div>freelancer: <span className="mono">{escrowFreelancer}</span></div>
-              <div>oracle: <span className="mono">{escrowOracle}</span></div>
-            </div>
-          )}
-
-          {escrowState !== undefined && (
-            <div className="meta">
-              depositDeadline: {fmtTs(depositDeadline)} |
-              startDeadline: {fmtTs(startDeadline)} |
-              completionDeadline: {fmtTs(completionDeadline)}<br/>
-              revisions: {revisions}/{MAX_REVISIONS.toString()} |
-              disputeGrace: {DISPUTE_GRACE === 0n ? '—' : `${Number(DISPUTE_GRACE)/86400} days`} |
-              disputeStart: {fmtTs(disputeStart)}
-            </div>
           )}
         </div>
-
-        <div className="banner">
-          <b>Next Step:</b> {nextAction}
+        <div className="buttonGroup mt-4">
+          <button className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg" onClick={readStateAll}>
+            <FaSyncAlt size={18} />
+            Refresh Status
+          </button>
         </div>
-        
-        {/* NEW: Visual separation from Next Step banner */}
-        {address && !escrow && (
-          <>
-            <div className="nextStepToCreateSpacer" />
-            
-            <div className="formGroup bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg mt-8">
-              <h4 className="sectionHeader">Create New Escrow</h4>
-              <div className="createEscrowSeparator" />
-              <div className="settingsGrid">
-                <div>
-                  <label htmlFor="freelancerAddr">Freelancer Address</label><br/>
-                  <input
-                    id="freelancerAddr"
-                    placeholder="0x..."
-                    value={freelancerAddr}
-                    onChange={e => setFreelancerAddr(e.target.value.trim())}
-                    className="fullWidth text-base py-3 px-4"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="createSettlement">Settlement Token</label><br/>
-                  <select
-                    id="createSettlement"
-                    value={settlementToken}
-                    onChange={e => setSettlementToken(e.target.value as 'USDT'|'USDC')}
-                    className="fullWidth text-base py-3 px-4"
-                  >
-                    <option>USDT</option>
-                    <option>USDC</option>
-                  </select>
-                </div>
-              </div>
-              <div className="buttonGroup">
-                 <button 
-                   onClick={createNewEscrow}
-                   disabled={!isValidEthereumAddress(freelancerAddr) || pendingApproval}
-                   className="cta flex items-center justify-center gap-3 text-lg"
-                 >
-                   <FaCheckCircle size={24} />
-                   Forge Escrow
-                 </button>
-                {!isValidEthereumAddress(freelancerAddr) && freelancerAddr && (
-                  <div className="hint invalidHint">
-                    Invalid freelancer address
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
 
-        {showClient && (!clientHasDeposit || !clientPaidFee) && (
-          <div className="settingsGrid">
-            <div>
-              <label htmlFor="settlement">Settlement</label><br/>
-              <select id="settlement" value={settlement} onChange={e => handleSettlementChange(e.target.value as 'USDT'|'USDC')}>
-                <option>USDT</option>
-                <option>USDC</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="amount">Amount</label><br/>
-              <input id="amount" placeholder="e.g. 10" value={amount} onChange={e => setAmount(e.target.value)} className="fullWidth text-base py-3 px-4" />
-            </div>
+        {escrow && address && (lower(address) === lower(escrowClient) || lower(address) === lower(escrowFreelancer) || lower(address) === lower(escrowOracle)) && (
+          <div className="mt-6 p-4 bg-gray-800/80 border border-blue-600 rounded-lg text-gray-300 text-sm flex items-start gap-3">
+            <FaTelegramPlane size={20} className="text-blue-400 mt-1 flex-shrink-0" />
+            <p>
+              To get instant Telegram alerts for escrow updates (deposits, starts, disputes, approvals), link your Telegram ID via the ForjeGig Bot. Send <code>/link {escrow} {role} {address}</code> to <a href="https://t.me/theforjebot" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">@theforjebot</a> (replace role with client/freelancer/oracle).
+            </p>
           </div>
         )}
 
-        {panelShouldShow && (
-          <div className="statusPanel bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-5 shadow-lg mt-6">
-            <div>Deposit: {panelDepositDisplay}</div>
-            <div>BNB fee paid: {panelFeePaidDisplay}</div>
-            <div>Settlement token: {panelSettlementDisplay}</div>
+        {escrowClient && escrowFreelancer && (
+          <div className="meta">
+            <div>client: <span className="mono">{escrowClient}</span></div>
+            <div>freelancer: <span className="mono">{escrowFreelancer}</span></div>
+            <div>oracle: <span className="mono">{escrowOracle}</span></div>
           </div>
         )}
 
-        {showClient && (
-          <>
-            <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
-              <h4 className="sectionHeader text-lg mb-4">Client Actions</h4>
-              <div className="actionGrid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                <button disabled={!canClientApproveToken} onClick={approveSpending} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all"><FaCheckCircle size={20} />Approve {settlement}</button>
-                <button disabled={!canClientDeposit} onClick={depositFn} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Deposit</button>
-                <button disabled={!canClientPayFee} onClick={payFee} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Pay Fee ({formatUnits(BNB_FEE || 0n, 18)} BNB)</button>
-                <button disabled={!canRefundNoStart} onClick={refundNoStart} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Refund (No Start)</button>
-                <button disabled={!canClientRevise} onClick={requestRevisionPrompt} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Request Revision</button>
-                <button disabled={!canClientApprove} onClick={approveJob} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Approve (release fund)</button>
-                <div>
-                  <button 
-                    className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all"
-                    disabled={!canRaiseDispute} 
-                    onClick={raiseDispute}
-                  >
-                    <FaExclamationTriangle size={20} />
-                    Raise Dispute
-                  </button>
-                  {canRaiseDispute && (
-                    <div className="hint">
-                      Use the raise dispute button only if the freelancer is unresponsive, abusive, or violating terms after revision request.
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </>
+        {escrowState !== undefined && (
+          <div className="meta">
+            depositDeadline: {fmtTs(depositDeadline)} |
+            startDeadline: {fmtTs(startDeadline)} |
+            completionDeadline: {fmtTs(completionDeadline)}<br/>
+            revisions: {revisions}/{MAX_REVISIONS.toString()} |
+            disputeGrace: {DISPUTE_GRACE === 0n ? '—' : `${Number(DISPUTE_GRACE)/86400} days`} |
+            disputeStart: {fmtTs(disputeStart)}
+          </div>
         )}
+      </div>
 
-        {showFreelancer && (
-          <>
-            <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
-              <h4 className="sectionHeader text-lg mb-4">Freelancer Actions</h4>
-              <div className="actionGrid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                <button disabled={!canFreelancerStart} onClick={startJobPrompt}>Start Job</button>
-                {escrowState === 0 && (!clientHasDeposit || !clientPaidFee) && (
-                  <div className="hint">Start Job is disabled until the client deposits and pays the fee.</div>
-               )}
-              </div>
-
+      <div className="banner">
+        <b>Next Step:</b> {nextAction}
+      </div>
+      
+      {/* NEW: Visual separation from Next Step banner */}
+      {address && !escrow && (
+        <>
+          <div className="nextStepToCreateSpacer" />
+          
+          <div className="formGroup bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg mt-8">
+            <h4 className="sectionHeader">Create New Escrow</h4>
+            <div className="createEscrowSeparator" />
+            <div className="settingsGrid">
               <div>
-                <button disabled={!canFreelancerSubmit} onClick={submitProofPrompt}>Submit Proof</button>
-                {canFreelancerSubmit && (
-                  <div className="hint">
-                    Follow this guide for the IPFS Hashing of your job proof for submission:
-                    <ol className="ipfsGuideList">
-                      <li>Sign in on <a href="https://app.pinata.cloud/auth/signin" target="_blank" rel="noopener noreferrer">Pinata</a>.</li>
-                      <li>Tap the "Add" button to upload your proof file for hashing.</li>
-                      <li>Choose Private or Public upload and get it uploaded.</li>
-                      <li>Copy the file CID from the Private or Public tab.</li>
-                      <li>Paste the CID here (with or without ipfs://) and tap OK.</li>
-                      <li>If your wallet doesn't pop up, check your extension or app.</li>
-                    </ol>
-                  </div>
-                )}
+                <label htmlFor="freelancerAddr">Freelancer Address</label><br/>
+                <input
+                  id="freelancerAddr"
+                  placeholder="0x..."
+                  value={freelancerAddr}
+                  onChange={e => setFreelancerAddr(e.target.value.trim())}
+                  className="fullWidth text-base py-3 px-4"
+                />
               </div>
+              <div>
+                <label htmlFor="createSettlement">Settlement Token</label><br/>
+                <select
+                  id="createSettlement"
+                  value={settlementToken}
+                  onChange={e => setSettlementToken(e.target.value as 'USDT'|'USDC')}
+                  className="fullWidth text-base py-3 px-4"
+                >
+                  <option>USDT</option>
+                  <option>USDC</option>
+                </select>
+              </div>
+            </div>
+            <div className="buttonGroup">
+               <button 
+                 onClick={createNewEscrow}
+                 disabled={!isValidEthereumAddress(freelancerAddr) || pendingApproval}
+                 className="cta flex items-center justify-center gap-3 text-lg"
+               >
+                 <FaCheckCircle size={24} />
+                 Forge Escrow
+               </button>
+              {!isValidEthereumAddress(freelancerAddr) && freelancerAddr && (
+                <div className="hint invalidHint">
+                  Invalid freelancer address
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
+      {showClient && (!clientHasDeposit || !clientPaidFee) && (
+        <div className="settingsGrid">
+          <div>
+            <label htmlFor="settlement">Settlement</label><br/>
+            <select id="settlement" value={settlement} onChange={e => handleSettlementChange(e.target.value as 'USDT'|'USDC')}>
+              <option>USDT</option>
+              <option>USDC</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="amount">Amount</label><br/>
+            <input id="amount" placeholder="e.g. 10" value={amount} onChange={e => setAmount(e.target.value)} className="fullWidth text-base py-3 px-4" />
+          </div>
+        </div>
+      )}
+
+      {panelShouldShow && (
+        <div className="statusPanel bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-5 shadow-lg mt-6">
+          <div>Deposit: {panelDepositDisplay}</div>
+          <div>BNB fee paid: {panelFeePaidDisplay}</div>
+          <div>Settlement token: {panelSettlementDisplay}</div>
+        </div>
+      )}
+
+      {showClient && (
+        <>
+          <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
+            <h4 className="sectionHeader text-lg mb-4">Client Actions</h4>
+            <div className="actionGrid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <button disabled={!canClientApproveToken} onClick={approveSpending} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all"><FaCheckCircle size={20} />Approve {settlement}</button>
+              <button disabled={!canClientDeposit} onClick={depositFn} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Deposit</button>
+              <button disabled={!canClientPayFee} onClick={payFee} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Pay Fee ({formatUnits(BNB_FEE || 0n, 18)} BNB)</button>
+              <button disabled={!canRefundNoStart} onClick={refundNoStart} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Refund (No Start)</button>
+              <button disabled={!canClientRevise} onClick={requestRevisionPrompt} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Request Revision</button>
+              <button disabled={!canClientApprove} onClick={approveJob} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Approve (release fund)</button>
               <div>
                 <button 
-                  className="danger" 
+                  className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all"
                   disabled={!canRaiseDispute} 
                   onClick={raiseDispute}
                 >
@@ -1126,36 +1103,96 @@ export default function App() {
                 </button>
                 {canRaiseDispute && (
                   <div className="hint">
-                    Use the raise dispute button only if the client is unresponsive, abusive, or violating terms after submission.
+                    Use the raise dispute button only if the freelancer is unresponsive, abusive, or violating terms after revision request.
                   </div>
                 )}
               </div>
             </div>
-          </>
-        )}
-
-        {showOracle && (
-          <>
-            <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
-              <h4 className="sectionHeader text-lg mb-4">Oracle Actions</h4>
-              <div className="actionGrid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                <button disabled={!canOracleSettle} onClick={() => settleDispute(true)}>Settle: Freelancer Wins</button>
-                <button disabled={!canOracleSettle} onClick={() => settleDispute(false)}>Settle: Client Wins</button>
-              </div>
-            </div>
-          </>
-        )}
-
-        {role === 'unknown' && (
-          <div className="hint">
-            You are not the client, freelancer, or oracle for this escrow. Actions are hidden.
           </div>
-        )}
+        </>
+      )}
 
-        <div className="statusText" role="status" aria-live="polite">
-          <b>Status:</b> {status}
+      {showFreelancer && (
+        <>
+          <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
+            <h4 className="sectionHeader text-lg mb-4">Freelancer Actions</h4>
+            <div className="actionGrid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <button disabled={!canFreelancerStart} onClick={startJobPrompt}>Start Job</button>
+              {escrowState === 0 && (!clientHasDeposit || !clientPaidFee) && (
+                <div className="hint">Start Job is disabled until the client deposits and pays the fee.</div>
+             )}
+            </div>
+
+            <div>
+              <button disabled={!canFreelancerSubmit} onClick={submitProofPrompt}>Submit Proof</button>
+              {canFreelancerSubmit && (
+                <div className="hint">
+                  Follow this guide for the IPFS Hashing of your job proof for submission:
+                  <ol className="ipfsGuideList">
+                    <li>Sign in on <a href="https://app.pinata.cloud/auth/signin" target="_blank" rel="noopener noreferrer">Pinata</a>.</li>
+                    <li>Tap the "Add" button to upload your proof file for hashing.</li>
+                    <li>Choose Private or Public upload and get it uploaded.</li>
+                    <li>Copy the file CID from the Private or Public tab.</li>
+                    <li>Paste the CID here (with or without ipfs://) and tap OK.</li>
+                    <li>If your wallet doesn't pop up, check your extension or app.</li>
+                  </ol>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <button 
+                className="danger" 
+                disabled={!canRaiseDispute} 
+                onClick={raiseDispute}
+              >
+                <FaExclamationTriangle size={20} />
+                Raise Dispute
+              </button>
+              {canRaiseDispute && (
+                <div className="hint">
+                  Use the raise dispute button only if the client is unresponsive, abusive, or violating terms after submission.
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {showOracle && (
+        <>
+          <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
+            <h4 className="sectionHeader text-lg mb-4">Oracle Actions</h4>
+            <div className="actionGrid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <button disabled={!canOracleSettle} onClick={() => settleDispute(true)}>Settle: Freelancer Wins</button>
+              <button disabled={!canOracleSettle} onClick={() => settleDispute(false)}>Settle: Client Wins</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {role === 'unknown' && (
+        <div className="hint">
+          You are not the client, freelancer, or oracle for this escrow. Actions are hidden.
         </div>
-      </main>
+      )}
+
+      <div className="statusText" role="status" aria-live="polite">
+        <b>Status:</b> {status}
+      </div>
+    </>
+  ) : (
+    <div className="mt-12 text-center">
+      <h3 className="text-3xl font-bold mb-6">My Escrows</h3>
+      <p className="text-gray-400 text-lg">
+        Your escrow history will appear here soon.
+      </p>
+      <p className="text-gray-500 text-sm mt-4">
+        Coming after backend API update.
+      </p>
+    </div>
+  )}
+</main>
 
       <footer className="mt-16 pb-8 text-center">
   <p className="text-gray-500 text-sm mb-4">Connect with us</p>
