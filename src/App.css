@@ -1,5 +1,4 @@
 /* src/App.css */
-
 :root {
   --bg: #050816;
   --bg-card: #0c1024;
@@ -45,10 +44,15 @@ body {
 .container {
   position: relative;
   min-height: 100vh;
-  padding: 14px;
-  overflow: hidden;
-  background: radial-gradient(circle at top left, #111827 0, #020617 40%, #020617 100%);
-  color: var(--text);
+  width: 100%;
+  max-width: none; /* Remove any max-width if present */
+  padding: 0 20px; /* Optional side padding on mobile */
+}
+
+@media (min-width: 1024px) {
+  .container {
+    padding: 0 40px;
+  }
 }
 
 .bgBlockchain {

@@ -17,7 +17,6 @@ import { bsc } from 'viem/chains';
 import { Toaster, toast } from 'react-hot-toast';
 import { FaWallet, FaSyncAlt, FaExclamationTriangle, FaCheckCircle, FaCopy, FaExternalLinkAlt } from 'react-icons/fa';
 import { FaTelegramPlane, FaTwitter } from 'react-icons/fa';
-
 import factoryAbi from './abis/ForjeEscrowFactory.json';
 import escrowAbi from './abis/ForjeGigEscrow.json';
 
@@ -154,6 +153,10 @@ export default function App() {
   const [tokenApprovedOnce, setTokenApprovedOnce] = useState(false);
   const [chainId, setChainId] = useState<string>('unknown');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'myescrows'>('dashboard');
+  const [myEscrows, setMyEscrows] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [isDark, setIsDark] = useState(true); // default dark
 
   // ====== ENHANCEMENT: escrow token auto-lock ======
   const escrowTokenSymbol = useMemo<'USDT' | 'USDC' | null>(() => {
@@ -339,14 +342,20 @@ export default function App() {
   const clientHasDeposit = depositAmount > 0n;
   const clientPaidFee = escrowBnbBalance >= BNB_FEE && BNB_FEE > 0n;
 
-  const canClientApproveToken = escrowState === 0 && !tokenApprovedOnce;
-  const canClientDeposit      = escrowState === 0 && tokenApprovedOnce && !clientHasDeposit;
-  const canClientPayFee       = escrowState === 0 && clientHasDeposit && !clientPaidFee;
+  // Funding phase conditions
+const isDepositDeadlineExceeded = escrowState === 0 && depositDeadline > 0n && now() > depositDeadline;
+const isStartDeadlineExceeded = escrowState === 0 && startDeadline > 0n && now() > startDeadline && clientHasDeposit && clientPaidFee;
+
+const canClientApproveToken = escrowState === 0 && !tokenApprovedOnce && !isDepositDeadlineExceeded;
+const canClientDeposit      = escrowState === 0 && tokenApprovedOnce && !clientHasDeposit && !isDepositDeadlineExceeded;
+const canClientPayFee       = escrowState === 0 && clientHasDeposit && !clientPaidFee && !isDepositDeadlineExceeded;
+
+// Refund only when start deadline exceeded (after full funding)
+const canRefundNoStart = isStartDeadlineExceeded;
 
   const canClientApprove = escrowState === 2;
   const canClientRevise  = escrowState === 2;
   const canRaiseDispute  = escrowState === 2 || escrowState === 4;
-  const canRefundNoStart = escrowState === 0 && now() > startDeadline;
 
   const canFreelancerStart  = escrowState === 0 && now() <= startDeadline && clientHasDeposit && clientPaidFee;
   const canFreelancerSubmit = (escrowState === 1 || escrowState === 4) && now() <= completionDeadline;
@@ -433,6 +442,14 @@ export default function App() {
     try { await fn(); } catch (e: any) { setStatus(`Action failed: ${e?.shortMessage || e?.message || e}`); } finally { setTimeout(() => setPendingApproval(false), 1200); }
   };
 
+  useEffect(() => {
+  if (isDark) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+}, [isDark]);
+
   const bscanTx = (hash: string) => `https://bscscan.com/tx/${hash}`;
 
   // ===== FINAL: Create New Escrow + Auto-Detect & Load =====
@@ -499,6 +516,39 @@ export default function App() {
       setPendingApproval(false);
     }
   };
+
+  useEffect(() => {
+  if (activeTab !== 'myescrows' || !address) {
+    setMyEscrows([]);
+    return;
+  }
+
+  const fetchHistory = async () => {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const res = await fetch(`https://forjeserver.onrender.com/api/my-escrows?address=${address}`);
+      if (!res.ok) throw new Error('Failed to load');
+      const data = await res.json();
+      setMyEscrows(data.escrows || []);
+    } catch (err: any) {
+      setHistoryError('Failed to load escrow history');
+      toast.error('Could not load history — check backend');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  fetchHistory();
+}, [activeTab, address]);
+
+useEffect(() => {
+  if (isDark) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+}, [isDark]);
 
   // ===== client actions =====
   const approveSpending = async () => {
@@ -737,39 +787,55 @@ export default function App() {
   const showOracle = role === 'oracle';
   const wrongNet = normalizeChainId(chainId) !== BSC_MAINNET_HEX && chainId !== 'unknown';
 
-  const nextAction = (() => {
-    if (escrowState === undefined) return 'Connect & load an escrow';
-    if (role === 'client') {
-      if (escrowState === 0) {
-        if (!clientHasDeposit && !tokenApprovedOnce) return 'Step 1: Approve token';
-        if (!clientHasDeposit && tokenApprovedOnce) return 'Step 2: Deposit tokens';
-        if (!clientPaidFee) return 'Step 3: Pay fee';
-        return 'Wait for freelancer to start';
-      }
-      if (escrowState === 1) return 'Wait for freelancer to submit proof';
-      if (escrowState === 2) return 'Review proof → Approve or Request Revision (or Raise Dispute)';
-      if (escrowState === 4) return 'Wait for freelancer to resubmit proof';
-      if (escrowState === 5) return 'Disputed: wait for oracle to settle';
-      if (escrowState === 6) return 'Resolved: no further actions';
+const nextAction = (() => {
+  if (!address) return 'Connect your wallet';
+  if (escrowState === undefined) return 'Load or Create an Escrow';
+
+  // Completed or settled
+  if (escrowState === 3 || escrowState === 6) {
+    return 'This escrow has been completed. No further actions.';
+  }
+
+  // Expired funding cases (only in state 0)
+  if (escrowState === 0) {
+    if (now() > depositDeadline) {
+      return 'Deposit deadline exceeded. Escrow inactive — no actions possible.';
     }
-    if (role === 'freelancer') {
-      if (escrowState === 0) {
-        if (!clientHasDeposit) return 'Wait for client to deposit & pay fee';
-        if (!clientPaidFee) return 'Wait for client to pay fee';
-        return 'Ready to start job';
-      }
-      if (escrowState === 1) return 'Work in progress — Submit Proof before deadline';
-      if (escrowState === 2) return 'Wait for client’s decision';
-      if (escrowState === 4) return 'Revision requested — Submit Proof again';
-      if (escrowState === 5) return 'Disputed: wait for oracle to settle';
-      if (escrowState === 6) return 'Resolved: no further actions';
+    if (now() > startDeadline && clientHasDeposit && clientPaidFee) {
+      return 'Start deadline exceeded. Client can refund deposited funds.';
     }
-    if (role === 'oracle') {
-      if (escrowState === 5) return 'After grace period, press a Settle button';
-      return 'No action for oracle';
+  }
+
+  // Normal flow (your existing role-based messages)
+  if (role === 'client') {
+    if (escrowState === 0) {
+      if (!clientHasDeposit && !tokenApprovedOnce) return 'Step 1: Approve token';
+      if (!clientHasDeposit && tokenApprovedOnce) return 'Step 2: Deposit tokens';
+      if (!clientPaidFee) return 'Step 3: Pay fee';
+      return 'Wait for freelancer to start';
     }
-    return 'You are not assigned to this escrow';
-  })();
+    if (escrowState === 1) return 'Wait for freelancer to submit proof';
+    if (escrowState === 2) return 'Review proof → Approve or Request Revision (or Raise Dispute)';
+    if (escrowState === 4) return 'Wait for freelancer to resubmit proof';
+    if (escrowState === 5) return 'Disputed: wait for oracle to settle';
+  }
+  if (role === 'freelancer') {
+    if (escrowState === 0) {
+      if (!clientHasDeposit) return 'Wait for client to deposit & pay fee';
+      if (!clientPaidFee) return 'Wait for client to pay fee';
+      return 'Ready to start job';
+    }
+    if (escrowState === 1) return 'Work in progress — Submit Proof before deadline';
+    if (escrowState === 2) return 'Wait for client’s decision';
+    if (escrowState === 4) return 'Revision requested — Submit Proof again';
+    if (escrowState === 5) return 'Disputed: wait for oracle to settle';
+  }
+  if (role === 'oracle') {
+    if (escrowState === 5) return 'After grace period, press a Settle button';
+    return 'No action for oracle';
+  }
+  return 'You are not assigned to this escrow';
+})();
 
   const startJobPrompt = async () => {
     const daysStr = prompt('How many days will you take to complete this job? (whole number)');
@@ -816,7 +882,7 @@ export default function App() {
   })();
 
   return (
-    <div className="container" role="application" aria-label="Forje App">
+    <div className="container" role="application" aria-label="AfriLance">
       <div className="bgBlockchain" aria-hidden="true" />
       
       <Toaster 
@@ -836,10 +902,10 @@ export default function App() {
   {!address ? (
     <div className="text-center py-12 px-6 max-w-4xl mx-auto">
       <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent mb-6">
-        Forje Gigs
+        AfriLance Escrow
       </h1>
       <p className="text-gray-300 text-lg mb-10 max-w-md mx-auto leading-relaxed">
-        Secure, trustless escrow for freelance payments on BNB Smart Chain using stablecoins (USDT/USDC).
+        Decentralized escrow for freelance payments on BNB Smart Chain using stablecoins (USDT/USDC). Client and freelancer set their terms , and enforce terms with our secure escrow.
       </p>
       <button 
         className="cta flex items-center justify-center gap-4 text-xl mx-auto px-10 py-5 rounded-2xl shadow-2xl hover:shadow-green-500/30 transition-all"
@@ -875,13 +941,19 @@ export default function App() {
           {chainId === 'unknown' ? '—' : (!wrongNet ? '🟢 BSC' : '🔴 Wrong Network')}
         </div>
       </div>
-      <div className="buttonsStack ml-8"> {/* add ml-8 for space from left */}
-        <button className="danger flex items-center justify-center gap-2" onClick={hardDisconnect}>
-         <FaWallet size={18} />
-         Disconnect
-        </button>
+        <div className="buttonsStack ml-8"> {/* add ml-8 for space from left */}
+          <button className="danger flex items-center justify-center gap-2" onClick={hardDisconnect}>
+           <FaWallet size={18} />
+           Disconnect
+          </button>
+            <button 
+            onClick={() => setIsDark(!isDark)}
+            className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center gap-2"
+          >
+            {isDark ? '🌙 Dark' : '☀️ Light'}
+          </button>
         {wrongNet && <button className="tiny" onClick={() => ensureBsc(provider)}>Switch to BSC</button>}
-      </div>
+        </div>
     </div>
 
 {/* TAB SWITCHER - clean text tabs */}
@@ -977,7 +1049,7 @@ export default function App() {
           <div className="mt-6 p-4 bg-gray-800/80 border border-blue-600 rounded-lg text-gray-300 text-sm flex items-start gap-3">
             <FaTelegramPlane size={20} className="text-blue-400 mt-1 flex-shrink-0" />
             <p>
-              To get instant Telegram alerts for escrow updates (deposits, starts, disputes, approvals), link your Telegram ID via the ForjeGig Bot. Send <code>/link {escrow} {role} {address}</code> to <a href="https://t.me/theforjebot" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">@theforjebot</a> (replace role with client/freelancer/oracle).
+              To get instant Telegram alerts for escrow updates (deposits, starts, disputes, approvals), link your Telegram ID via the <a href="https://t.me/theforjebot" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">@theforjebot</a>.
             </p>
           </div>
         )}
@@ -1045,7 +1117,7 @@ export default function App() {
                  className="cta flex items-center justify-center gap-3 text-lg"
                >
                  <FaCheckCircle size={24} />
-                 Forge Escrow
+                 Create Escrow
                </button>
               {!isValidEthereumAddress(freelancerAddr) && freelancerAddr && (
                 <div className="hint invalidHint">
@@ -1182,19 +1254,64 @@ export default function App() {
       </div>
     </>
   ) : (
-    <div className="mt-12 text-center">
-      <h3 className="text-3xl font-bold mb-6">My Escrows</h3>
-      <p className="text-gray-400 text-lg">
-        Your escrow history will appear here soon.
-      </p>
-      <p className="text-gray-500 text-sm mt-4">
-        Coming after backend API update.
-      </p>
-    </div>
-  )}
+  <div className="mt-12">
+    <h3 className="text-3xl font-bold mb-8 text-center">My Escrows</h3>
+
+    {historyLoading && (
+      <div className="text-center py-12">
+        <FaSyncAlt className="animate-spin mx-auto text-4xl text-gray-400" />
+        <p className="mt-4 text-gray-400">Loading your escrows...</p>
+      </div>
+    )}
+
+    {historyError && (
+      <div className="text-center py-12 text-red-400">
+        {historyError}
+      </div>
+    )}
+
+    {!historyLoading && myEscrows.length === 0 && (
+      <div className="text-center py-12 text-gray-400">
+        No escrows found for this wallet.
+        <p className="text-sm mt-4">Create one on the Dashboard tab!</p>
+      </div>
+    )}
+
+    {myEscrows.length > 0 && (
+      <div className="space-y-6">
+        {myEscrows.map((e) => (
+          <div
+            key={e.escrow}
+            onClick={() => {
+              setEscrow(e.escrow);
+              setActiveTab('dashboard');
+              toast.success('Escrow loaded!');
+            }}
+            className="bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg hover:shadow-xl hover:border-green-600/50 transition cursor-pointer"
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <div className="mono text-lg break-all">{e.escrow}</div>
+                <div className="text-sm text-gray-400 mt-2">
+                  Client: {e.client?.slice(0, 6)}...{e.client?.slice(-4)} | 
+                  Freelancer: {e.freelancer?.slice(0, 6)}...{e.freelancer?.slice(-4)}
+                </div>
+              </div>
+              <span className={`px-4 py-2 rounded-full text-sm font-bold ${
+                e.isActive ? 'bg-green-600/70 text-green-100' : 'bg-gray-600 text-gray-300'
+              }`}>
+                {e.stateLabel}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 </main>
 
-      <footer className="mt-16 pb-8 text-center">
+<footer className="mt-16 pb-8 text-center">
   <p className="text-gray-500 text-sm mb-4">Connect with us</p>
   <div className="flex justify-center gap-8">
     <a 
@@ -1229,7 +1346,7 @@ export default function App() {
   </div>
   
   <p className="text-gray-600 text-xs mt-8">
-    © 2025 ForjeGigs — Secure Freelance Escrow on BNB Chain
+    © 2025 AfriLance — Empowering African Freelancers
   </p>
 </footer>
     </div>

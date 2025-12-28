@@ -14,9 +14,9 @@ export default defineConfig({
         enabled: true
       },
       manifest: {
-        name: 'Forje Gigs',
-        short_name: 'Forje',
-        description: 'Secure freelance escrow on BNB Smart Chain',
+        name: 'AfriLance',
+        short_name: 'AfriLance',
+        description: 'Secure gig escrow and freelance marketplace on BNB Smart Chain',
         theme_color: '#050816',
         background_color: '#050816',
         display: 'standalone',
