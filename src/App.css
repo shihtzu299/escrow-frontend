@@ -378,7 +378,7 @@ select {
 /* spacing under top buttons to avoid crowding escrow label */
 
 .main {
-  margin-top: 22px;
+  margin-top: 2px;
 }
 
 /* responsive tweaks */
@@ -621,4 +621,13 @@ select {
 
 .tabActive::after {
   width: 100%;
+}
+
+/* Hide scrollbar but allow horizontal scrolling */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }

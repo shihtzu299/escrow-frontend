@@ -898,119 +898,146 @@ const nextAction = (() => {
         }}
       />
 
-<header className="topBar">
-  {!address ? (
-    <div className="text-center py-12 px-6 max-w-4xl mx-auto">
-      <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent mb-6">
-        AfriLance Escrow
-      </h1>
-      <p className="text-gray-300 text-lg mb-10 max-w-md mx-auto leading-relaxed">
-        Decentralized escrow for freelance payments on BNB Smart Chain using stablecoins (USDT/USDC). Client and freelancer set their terms , and enforce terms with our secure escrow.
-      </p>
-      <button 
-        className="cta flex items-center justify-center gap-4 text-xl mx-auto px-10 py-5 rounded-2xl shadow-2xl hover:shadow-green-500/30 transition-all"
-        onClick={connect}
-      >
-        <FaWallet size={32} />
-        Connect Wallet to Begin
-      </button>
-      <p className="text-gray-500 text-sm mt-8">
-        Supports MetaMask, Trust Wallet, WalletConnect and all BSC wallets
-      </p>
-    </div>
-  ) : (
-  <div className="max-w-4xl mx-auto px-6 pt-6">
-    <div className="flex justify-between items-center mb-10">
-      <div className="addrCol">
-        <div className="smallText">Connected</div>
-        <div className="mono small">{address}</div>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-xs text-gray-400">Role:</span>
-          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-            role === 'client' ? 'bg-blue-600/70 text-blue-100' :
-            role === 'freelancer' ? 'bg-green-600/70 text-green-100' :
-            role === 'oracle' ? 'bg-purple-600/70 text-purple-100' :
-            role === 'unknown' ? 'bg-gray-600 text-gray-300' :
-            'bg-gray-700 text-gray-400'
-          }`}>
-            {roleLabel[role]}
-          </span>
+<header className="topBar fixed top-0 left-0 right-0 z-50">
+  {/* Extended background that flows behind the main content */}
+  <div className="absolute inset-x-0 bottom-0 h-px bg-gray-800 opacity-50 pointer-events-none"></div>
+  
+  <div className="relative z-10 max-w-4xl mx-auto px-4 py-4">
+    {!address ? (
+      /* ==== DISCONNECTED STATE - unchanged ==== */
+      <div className="text-center py-12 px-6">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent mb-6 leading-tight whitespace-nowrap">
+          AfriLance Escrow
+        </h1>
+        <p className="text-gray-400 text-base sm:text-lg mb-10 max-w-lg mx-auto leading-snug px-4">
+          Decentralized escrow for freelance payments on BNB Smart Chain using stablecoins (USDT/USDC). Client and freelancer set their terms and enforce them securely.
+        </p>
+        <button
+          onClick={connect}
+          className="mt-6 px-10 py-3 text-base font-semibold !rounded-lg bg-gray-800/70 hover:bg-gray-700/80 border border-gray-600 shadow-lg flex items-center justify-center gap-3 mx-auto transition-all"
+        >
+          <FaWallet size={22} />
+          Connect Wallet
+        </button>
+        <p className="text-gray-500 text-xs mt-3 mb-0 max-w-md mx-auto text-center leading-snug px-4">
+          Supports MetaMask, WalletConnect and all BSC wallets.
+        </p>
+      </div>
+    ) : (
+      /* ==== CONNECTED STATE - Clean, compact, modern ==== */
+      <div className="space-y-5">
+        {/* Single compact wallet card with Disconnect on the same line */}
+        <div className="bg-gray-800/70 backdrop-blur border border-gray-700 rounded-2xl p-4 shadow-lg">
+          <div className="flex items-center justify-between gap-4">
+            {/* Left side: Address + Role + Network */}
+            <div className="flex-1 min-w-0">
+              <div className="text-sm text-gray-400">Connected</div>
+              <div className="mono text-base font-medium">
+                {address.slice(0, 6)}...{address.slice(-4)}
+              </div>
+              <div className="flex items-center gap-4 mt-1 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">Role:</span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    role === 'client' ? 'bg-blue-600/70 text-blue-100' :
+                    role === 'freelancer' ? 'bg-green-600/70 text-green-100' :
+                    role === 'oracle' ? 'bg-purple-600/70 text-purple-100' :
+                    role === 'unknown' ? 'bg-gray-600 text-gray-300' :
+                    'bg-gray-700 text-gray-400'
+                  }`}>
+                    {roleLabel[role]}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-gray-400">Network:</span>
+                  {chainId === 'unknown' ? '—' : (!wrongNet ? <><span className="w-2 h-2 bg-green-500 rounded-full"></span> BSC</> : '🔴 Wrong Network')}
+                </div>
+              </div>
+            </div>
+
+            {/* Right side: Disconnect button (compact) + optional Switch to BSC */}
+            <div className="flex items-center gap-3">
+              {wrongNet && (
+                <button 
+                  className="px-4 py-2 !rounded-xl bg-gray-700/80 hover:bg-gray-600 border border-gray-600 text-sm font-medium transition-all whitespace-nowrap"
+                  onClick={() => ensureBsc(provider)}
+                >
+                  Switch to BSC
+                </button>
+              )}
+              <button
+                onClick={hardDisconnect}
+                className="px-5 py-2 !rounded-xl bg-red-900/50 hover:bg-red-900/70 border border-red-800/80 text-red-300 font-medium transition-all flex items-center gap-2 whitespace-nowrap"
+              >
+                <FaWallet size={16} />
+                Disconnect
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="smallText">
-          Network:&nbsp;
-          {chainId === 'unknown' ? '—' : (!wrongNet ? '🟢 BSC' : '🔴 Wrong Network')}
+
+        {/* Tabs - unchanged */}
+        <div className="tabSwitcher">
+          <button className={`tabButton ${activeTab === 'dashboard' ? 'tabActive' : ''}`} onClick={() => setActiveTab('dashboard')}>
+            Dashboard
+          </button>
+          <button className={`tabButton ${activeTab === 'myescrows' ? 'tabActive' : ''}`} onClick={() => setActiveTab('myescrows')}>
+            My Escrows
+          </button>
         </div>
       </div>
-        <div className="buttonsStack ml-8"> {/* add ml-8 for space from left */}
-          <button className="danger flex items-center justify-center gap-2" onClick={hardDisconnect}>
-           <FaWallet size={18} />
-           Disconnect
-          </button>
-            <button 
-            onClick={() => setIsDark(!isDark)}
-            className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center gap-2"
-          >
-            {isDark ? '🌙 Dark' : '☀️ Light'}
-          </button>
-        {wrongNet && <button className="tiny" onClick={() => ensureBsc(provider)}>Switch to BSC</button>}
-        </div>
-    </div>
-
-{/* TAB SWITCHER - clean text tabs */}
-<div className="tabSwitcher">
-  <button className={`tabButton ${activeTab === 'dashboard' ? 'tabActive' : ''}`} onClick={() => setActiveTab('dashboard')}>
-    Dashboard
-  </button>
-  <button className={`tabButton ${activeTab === 'myescrows' ? 'tabActive' : ''}`} onClick={() => setActiveTab('myescrows')}>
-    My Escrows
-  </button>
-</div>
+    )}
   </div>
-)}
 </header>
-
-<main className="main max-w-4xl mx-auto px-6 pb-12">
+<main className="main max-w-4xl mx-auto px-6 pb-12 ">
   {activeTab === 'dashboard' ? (
     <>
       {/* ALL YOUR CURRENT DASHBOARD CONTENT - unchanged */}
       {escrow && escrowState !== undefined && (
-        <div className="mt-6 mb-8 px-4">
-          <div className="flex items-center justify-between relative">
-            {STEPS.map((step, index) => (
-              <div key={step.state} className="flex-1 relative">
-                <div className="flex flex-col items-center">
-                  <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                      escrowState === step.state
-                        ? 'bg-green-500 text-white shadow-lg shadow-green-500/50'
-                        : escrowState > step.state
-                        ? 'bg-green-600/70 text-white'
-                        : 'bg-gray-700 text-gray-400'
-                    }`}
-                  >
-                    {escrowState > step.state ? (
-                      <FaCheckCircle size={20} />
-                    ) : (
-                      index + 1
-                    )}
-                  </div>
-                  <p className="mt-2 text-xs text-center text-gray-300">
-                    {step.label}
-                  </p>
-                </div>
-
-                {/* Line between steps */}
-                {index < STEPS.length - 1 && (
-                  <div
-                    className={`absolute top-6 left-12 right-0 h-1 -z-10 transition-all ${
-                      escrowState > step.state ? 'bg-green-500' : 'bg-gray-700'
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
+        <div className="mt-8">
+  {/* Horizontal scroll container on mobile, full width on larger screens */}
+  <div className="overflow-x-auto scrollbar-hide px-4 md:px-0">
+    <div className="flex items-center justify-between gap-4 min-w-max md:min-w-0 md:gap-2">
+      {STEPS.map((step, index) => (
+        <div 
+          key={step.state} 
+          className="relative flex flex-col items-center flex-1 md:flex-initial"
+        >
+          {/* Circle */}
+          <div
+            className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all shadow-md ${
+              escrowState === step.state
+                ? 'bg-green-500 text-white shadow-green-500/60'
+                : escrowState > step.state
+                ? 'bg-green-600/80 text-white'
+                : 'bg-gray-700 text-gray-400'
+            }`}
+          >
+            {escrowState > step.state ? (
+              <FaCheckCircle size={20} />
+            ) : (
+              index + 1
+            )}
           </div>
+
+          {/* Label */}
+          <p className="mt-2 text-xs text-center text-gray-300 leading-tight">
+            {step.label}
+          </p>
+
+          {/* Connecting line */}
+          {index < STEPS.length - 1 && (
+            <div
+              className={`absolute top-6 left-12 right-0 h-0.5 -z-10 transition-all ${
+                escrowState > step.state ? 'bg-green-500' : 'bg-gray-700'
+              }`}
+            />
+          )}
         </div>
+      ))}
+    </div>
+  </div>
+</div>
       )}
 
       <div className="formGroup bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg mb-8">
@@ -1049,7 +1076,7 @@ const nextAction = (() => {
           <div className="mt-6 p-4 bg-gray-800/80 border border-blue-600 rounded-lg text-gray-300 text-sm flex items-start gap-3">
             <FaTelegramPlane size={20} className="text-blue-400 mt-1 flex-shrink-0" />
             <p>
-              To get instant Telegram alerts for escrow updates (deposits, starts, disputes, approvals), link your Telegram ID via the <a href="https://t.me/theforjebot" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">@theforjebot</a>.
+              To get instant Telegram alerts for escrow updates (deposits, starts, disputes, approvals), link your Telegram ID via the <a href="https://t.me/AfriLance_Bot" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">AfriLanceBot</a>.
             </p>
           </div>
         )}
@@ -1311,7 +1338,7 @@ const nextAction = (() => {
 )}
 </main>
 
-<footer className="mt-16 pb-8 text-center">
+<footer className="mt-26 pb-8 text-center">
   <p className="text-gray-500 text-sm mb-4">Connect with us</p>
   <div className="flex justify-center gap-8">
     <a 
