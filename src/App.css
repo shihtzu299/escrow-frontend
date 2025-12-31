@@ -631,3 +631,24 @@ select {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Fix for escrow participant info - long addresses */
+.escrow-participants {
+  padding: 10px 12px;
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 12px;
+  border: 1px solid rgba(31, 41, 55, 0.9);
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.escrow-participants > div {
+  word-break: break-all;           /* Force long addresses to wrap */
+  overflow-wrap: anywhere;         /* Extra safety */
+}
+
+.escrow-participants .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  word-break: break-all;
+}

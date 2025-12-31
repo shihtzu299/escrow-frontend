@@ -1081,13 +1081,13 @@ const nextAction = (() => {
           </div>
         )}
 
-        {escrowClient && escrowFreelancer && (
-          <div className="meta">
-            <div>client: <span className="mono">{escrowClient}</span></div>
-            <div>freelancer: <span className="mono">{escrowFreelancer}</span></div>
-            <div>oracle: <span className="mono">{escrowOracle}</span></div>
-          </div>
-        )}
+{escrowClient && escrowFreelancer && (
+  <div className="escrow-participants">
+    <div>client: <span className="mono">{escrowClient}</span></div>
+    <div>freelancer: <span className="mono">{escrowFreelancer}</span></div>
+    <div>oracle: <span className="mono">{escrowOracle}</span></div>
+  </div>
+)}
 
         {escrowState !== undefined && (
           <div className="meta">
