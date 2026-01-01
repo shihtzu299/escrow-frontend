@@ -161,6 +161,8 @@ export default function App() {
   const [myEscrows, setMyEscrows] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const ESCROWS_PER_PAGE = 7;
 
   // ====== ENHANCEMENT: escrow token auto-lock ======
   const escrowTokenSymbol = useMemo<'USDT' | 'USDC' | null>(() => {
@@ -399,6 +401,22 @@ toast.success('Connected');
     }
     setChainId(normalizeChainId(await prov.request({ method: 'eth_chainId' }).catch(() => 'unknown')));
   };
+
+  // Reset to initial state when wallet disconnects
+  useEffect(() => {
+  if (!address) {
+    setActiveTab('dashboard');
+    setMyEscrows([]);
+    setHistoryLoading(false);
+    setHistoryError(null);
+    setEscrow(undefined); // optional: clear any loaded escrow
+    // Any other resets you want
+  }
+}, [address]);
+
+useEffect(() => {
+  if (!address) setCurrentPage(0);
+}, [address]);
 
   const clientHasDeposit = depositAmount > 0n;
   const clientPaidFee = escrowBnbBalance >= BNB_FEE && BNB_FEE > 0n;
@@ -1336,9 +1354,11 @@ const nextAction = (() => {
       </div>
     </>
   ) : (
-  <div className="mt-12">
-    <h3 className="text-3xl font-bold mb-8 text-center">My Escrows</h3>
+  <div className="mt-12"></div>
+)}
 
+    {activeTab === 'myescrows' && (
+  <div className="mt-12">
     {historyLoading && (
       <div className="text-center py-12">
         <FaSyncAlt className="animate-spin mx-auto text-4xl text-gray-400" />
@@ -1352,7 +1372,7 @@ const nextAction = (() => {
       </div>
     )}
 
-    {!historyLoading && myEscrows.length === 0 && (
+    {!historyLoading && !historyError && myEscrows.length === 0 && (
       <div className="text-center py-12 text-gray-400">
         No escrows found for this wallet.
         <p className="text-sm mt-4">Create one on the Dashboard tab!</p>
@@ -1360,45 +1380,73 @@ const nextAction = (() => {
     )}
 
     {myEscrows.length > 0 && (
-  <div className="space-y-4">
-    {myEscrows.map((e) => (
-      <div
-        key={e.escrow}
-        onClick={() => {
-          if (e.isActive) {
-            setEscrow(e.escrow);
-            setActiveTab('dashboard');
-            toast.success('Escrow loaded!');
-          }
-        }}
-        className={`bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-4 shadow-md transition-all ${
-          e.isActive
-            ? 'hover:shadow-lg hover:border-green-600/50 cursor-pointer'
-            : 'opacity-70 cursor-not-allowed'
-        }`}
-      >
-        <div className="flex justify-between items-start gap-3">
-          <div className="flex-1 min-w-0">
-            {/* Shortened escrow address */}
-            <div className="mono text-sm font-medium break-all text-gray-200">
-              {e.escrow.slice(0, 8)}...{e.escrow.slice(-6)}
-            </div>
-            <div className="text-xs text-gray-400 mt-1">
-              Client: {e.client?.slice(0, 6)}...{e.client?.slice(-4)} | 
-              Freelancer: {e.freelancer?.slice(0, 6)}...{e.freelancer?.slice(-4)}
-            </div>
-          </div>
-          {/* State badge */}
-          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-            e.isActive ? 'bg-green-600/80 text-green-100' : 'bg-gray-600 text-gray-300'
-          }`}>
-            {e.stateLabel}
-          </span>
+      <>
+        <div className="space-y-4">
+          {myEscrows
+            .slice(currentPage * 7, (currentPage + 1) * 7)
+            .map((e) => (
+              <div
+                key={e.escrow}
+                onClick={() => {
+                  if (e.isActive) {
+                    setEscrow(e.escrow);
+                    setActiveTab('dashboard');
+                    toast.success('Escrow loaded!');
+                  }
+                }}
+                className={`bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-4 shadow-md transition-all ${
+                  e.isActive
+                    ? 'hover:shadow-lg hover:border-green-600/50 cursor-pointer'
+                    : 'opacity-70 cursor-not-allowed'
+                }`}
+              >
+                <div className="flex justify-between items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="mono text-sm font-medium break-all text-gray-200">
+                      {e.escrow.slice(0, 8)}...{e.escrow.slice(-6)}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      Client: {e.client?.slice(0, 6)}...{e.client?.slice(-4)} | 
+                      Freelancer: {e.freelancer?.slice(0, 6)}...{e.freelancer?.slice(-4)}
+                    </div>
+                  </div>
+
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    e.isActive ? 'bg-green-600/80 text-green-100' : 'bg-gray-600 text-gray-300'
+                  }`}>
+                    {e.stateLabel}
+                  </span>
+                </div>
+              </div>
+            ))}
         </div>
-      </div>
-    ))}
-  </div>
-)}
+
+        {myEscrows.length > 7 && (
+          <div className="flex justify-center items-center gap-8 mt-10">
+            <button
+              onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+              disabled={currentPage === 0}
+              className="px-6 py-3 rounded-xl bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+            >
+              ← Previous
+            </button>
+
+            <span className="text-gray-400 font-medium">
+              Page {currentPage + 1} of {Math.ceil(myEscrows.length / 7)}
+            </span>
+
+            <button
+              onClick={() => setCurrentPage(Math.min(Math.ceil(myEscrows.length / 7) - 1, currentPage + 1))}
+              disabled={currentPage >= Math.ceil(myEscrows.length / 7) - 1}
+              className="px-6 py-3 rounded-xl bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+            >
+              Next →
+            </button>
+          </div>
+        )}
+      </>
+    )}
+  
   </div>
 )}
 
