@@ -1,45 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'  // Tailwind v4
-import { VitePWA } from 'vite-plugin-pwa'    // PWA
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),  // Keeps your beautiful styles
-    VitePWA({
-      registerType: 'autoUpdate',
-      injectRegister: 'auto',
-      devOptions: {
-        enabled: true
-      },
-      manifest: {
-        name: 'AfriLance',
-        short_name: 'AfriLance',
-        description: 'Secure gig escrow and freelance marketplace on BNB Smart Chain',
-        theme_color: '#050816',
-        background_color: '#050816',
-        display: 'standalone',
-        icons: [
-          {
-            src: 'pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable'
-          }
-        ]
-      }
-    })
+    
   ],
   build: {
     outDir: 'dist',

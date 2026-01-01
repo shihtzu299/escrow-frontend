@@ -19,6 +19,7 @@ import { FaWallet, FaSyncAlt, FaExclamationTriangle, FaCheckCircle, FaCopy, FaEx
 import { FaTelegramPlane, FaTwitter } from 'react-icons/fa';
 import factoryAbi from './abis/ForjeEscrowFactory.json';
 import escrowAbi from './abis/ForjeGigEscrow.json';
+import { createClient } from '@supabase/supabase-js';
 
 // ===== env =====
 const env = (import.meta as any).env as Record<string, string>;
@@ -29,6 +30,10 @@ const USDC = env.VITE_USDC as Address;
 const WC_ID = env.VITE_WC_PROJECT_ID as string;
 const WALLET_DEEPLINK = (env.VITE_WALLET_DEEPLINK || '') as string;
 const BOT_ORACLE_ADDRESS = import.meta.env.VITE_BOT_ORACLE as Address;
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 // ===== minimal ERC20 ABI =====
 const erc20Abi = [
@@ -156,7 +161,6 @@ export default function App() {
   const [myEscrows, setMyEscrows] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
-  const [isDark, setIsDark] = useState(true); // default dark
 
   // ====== ENHANCEMENT: escrow token auto-lock ======
   const escrowTokenSymbol = useMemo<'USDT' | 'USDC' | null>(() => {
@@ -276,9 +280,66 @@ export default function App() {
 
       setWallet(client);
       setAddress(addr);
-      setStatus(`Connected: ${addr}`);
-      toast.success(`Connected`);
-    } catch (e: any) {
+
+// === SUPABASE HISTORY FETCH ===
+setHistoryLoading(true);
+setHistoryError(null);
+setMyEscrows([]);
+
+try {
+  // Use the local 'addr' variable — it's guaranteed to be correct here
+  const lowerAddress = addr.toLowerCase();
+
+  // Query for client matches
+  const { data: clientData, error: clientError } = await supabase
+    .from('escrows')
+    .select('id, data')
+    .ilike('data->>client', lowerAddress);
+
+  // Query for freelancer matches
+  const { data: freelancerData, error: freelancerError } = await supabase
+    .from('escrows')
+    .select('id, data')
+    .ilike('data->>freelancer', lowerAddress);
+
+  if (clientError && freelancerError) throw clientError || freelancerError;
+
+  // Combine and dedupe results
+  const combined = [...(clientData || []), ...(freelancerData || [])];
+  const uniqueMap = new Map();
+  combined.forEach(row => {
+    if (!uniqueMap.has(row.id)) {
+      uniqueMap.set(row.id, row);
+    }
+  });
+
+  const data = Array.from(uniqueMap.values());
+
+  // Sort by updated_at
+  data.sort((a: any, b: any) => 
+    new Date(b.data.updated_at || 0).getTime() - new Date(a.data.updated_at || 0).getTime()
+  );
+
+  const escrows = data.map((row: any) => ({
+    escrow: row.id,
+    ...row.data,
+    isActive: !row.data.completed,
+    stateLabel: STATE_LABEL[row.data.state || 0] || 'Unknown'
+  }));
+
+  setMyEscrows(escrows);
+  console.log('Loaded', escrows.length, 'escrows from Supabase');
+} catch (err: any) {
+  console.error('History load failed:', err);
+  setHistoryError('Failed to load history. Try refreshing.');
+} finally {
+  setHistoryLoading(false);
+}
+
+// Status update — always runs
+setStatus(`Connected: ${addr}`);
+toast.success('Connected');    
+} catch (e: any) {
       setStatus(`Connect failed: ${e?.message || e}`);
       toast.error(`Connect failed`);
     }
@@ -442,14 +503,6 @@ const canRefundNoStart = isStartDeadlineExceeded;
     try { await fn(); } catch (e: any) { setStatus(`Action failed: ${e?.shortMessage || e?.message || e}`); } finally { setTimeout(() => setPendingApproval(false), 1200); }
   };
 
-  useEffect(() => {
-  if (isDark) {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
-  }
-}, [isDark]);
-
   const bscanTx = (hash: string) => `https://bscscan.com/tx/${hash}`;
 
   // ===== FINAL: Create New Escrow + Auto-Detect & Load =====
@@ -517,87 +570,79 @@ const canRefundNoStart = isStartDeadlineExceeded;
     }
   };
 
-  useEffect(() => {
-  if (activeTab !== 'myescrows' || !address) {
-    setMyEscrows([]);
-    return;
-  }
-
-  const fetchHistory = async () => {
-    setHistoryLoading(true);
-    setHistoryError(null);
-    try {
-      const res = await fetch(`https://forjeserver.onrender.com/api/my-escrows?address=${address}`);
-      if (!res.ok) throw new Error('Failed to load');
-      const data = await res.json();
-      setMyEscrows(data.escrows || []);
-    } catch (err: any) {
-      setHistoryError('Failed to load escrow history');
-      toast.error('Could not load history — check backend');
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
-
-  fetchHistory();
-}, [activeTab, address]);
-
-useEffect(() => {
-  if (isDark) {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
-  }
-}, [isDark]);
-
   // ===== client actions =====
   const approveSpending = async () => {
-    try {
-      if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
-      if (role !== 'client') throw new Error('Only the client can approve token spending');
-      await ensureBsc(provider);
-      const token = tokenAddr;
-      const dec = await readDecimals(token);
-      const amt = parseUnits(amount || '0', dec);
-      await withPending(async () => {
-        const hash = await wallet.writeContract({
-          address: token, abi: erc20Abi, functionName: 'approve',
-          args: [escrow!, amt], account: address
-        });
-        setStatus(`Approve tx: ${hash} (${bscanTx(hash)})`);
-        setTokenApprovedOnce(true);
-        await new Promise(r => setTimeout(r, 4000));
-        await refreshRoleAndState(escrow!, address!);
-      });
-    } catch (e: any) {
-      setStatus(`Approve failed: ${e?.shortMessage || e?.message || e}`);
-      setPendingApproval(false);
+  try {
+    if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
+    if (role !== 'client') throw new Error('Only the client can approve');
+    if (escrowState !== 0) throw new Error('Approval allowed only in Funding state');
+
+    await ensureBsc(provider);
+
+    const token = tokenAddr;
+    const dec = await readDecimals(token);
+    const amtBigInt = parseUnits(amount || '0', dec);
+
+    // Prevent zero approval
+    if (amtBigInt === 0n) {
+      toast.error('Approval amount must be greater than 0');
+      return;
     }
-  };
+
+    await withPending(async () => {
+      const hash = await wallet.writeContract({
+        address: token,
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [escrow!, amtBigInt],
+        account: address
+      });
+      setStatus(`Approve tx: ${hash} (${bscanTx(hash)})`);
+      setTokenApprovedOnce(true);
+      await new Promise(r => setTimeout(r, 4000));
+      await refreshRoleAndState(escrow!, address!);
+    });
+  } catch (e: any) {
+    setStatus(`Approve failed: ${e?.shortMessage || e?.message || e}`);
+    setPendingApproval(false);
+  }
+};
 
   const depositFn = async () => {
-    try {
-      if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
-      if (role !== 'client') throw new Error('Only the client can deposit');
-      if (escrowState !== 0) throw new Error('Deposit allowed only in Funding state');
-      await ensureBsc(provider);
-      const token = tokenAddr;
-      const dec = await readDecimals(token);
-      const amt = parseUnits(amount || '0', dec);
-      await withPending(async () => {
-        const hash = await wallet.writeContract({
-          address: escrow!, abi: escrowAbi as any, functionName: 'deposit',
-          args: [amt], account: address
-        });
-        setStatus(`Deposit tx: ${hash} (${bscanTx(hash)})`);
-        await new Promise(r => setTimeout(r, 4000));
-        await refreshRoleAndState(escrow!, address!);
-      });
-    } catch (e: any) {
-      setStatus(`Deposit failed: ${e?.shortMessage || e?.message || e}`);
-      setPendingApproval(false);
+  try {
+    if (!wallet || !address || !escrow) throw new Error('Connect wallet and set escrow');
+    if (role !== 'client') throw new Error('Only the client can deposit');
+    if (escrowState !== 0) throw new Error('Deposit allowed only in Funding state');
+
+    await ensureBsc(provider);
+
+    const token = tokenAddr;
+    const dec = await readDecimals(token);
+    const amtBigInt = parseUnits(amount || '0', dec);
+
+    // ← NEW: Prevent zero deposit
+    if (amtBigInt === 0n) {
+      toast.error('Deposit amount must be greater than 0');
+      return;
     }
-  };
+
+    await withPending(async () => {
+      const hash = await wallet.writeContract({
+        address: escrow!,
+        abi: escrowAbi as any,
+        functionName: 'deposit',
+        args: [amtBigInt],
+        account: address
+      });
+      setStatus(`Deposit tx: ${hash} (${bscanTx(hash)})`);
+      await new Promise(r => setTimeout(r, 4000));
+      await refreshRoleAndState(escrow!, address!);
+    });
+  } catch (e: any) {
+    setStatus(`Deposit failed: ${e?.shortMessage || e?.message || e}`);
+    setPendingApproval(false);
+  }
+};
 
   const payFee = async () => {
     try {
@@ -1081,13 +1126,13 @@ const nextAction = (() => {
           </div>
         )}
 
-{escrowClient && escrowFreelancer && (
-  <div className="escrow-participants">
-    <div>client: <span className="mono">{escrowClient}</span></div>
-    <div>freelancer: <span className="mono">{escrowFreelancer}</span></div>
-    <div>oracle: <span className="mono">{escrowOracle}</span></div>
-  </div>
-)}
+        {escrowClient && escrowFreelancer && (
+          <div className="meta">
+            <div>client: <span className="mono">{escrowClient.slice(0, 6)}...{escrowClient.slice(-4)}</span></div>
+            <div>freelancer: <span className="mono">{escrowFreelancer.slice(0, 6)}...{escrowFreelancer.slice(-4)}</span></div>
+            <div>oracle: <span className="mono">{(escrowOracle || '—').slice(0, 6)}...{(escrowOracle || '—').slice(-4)}</span></div>
+          </div>
+        )}
 
         {escrowState !== undefined && (
           <div className="meta">
@@ -1212,52 +1257,62 @@ const nextAction = (() => {
       )}
 
       {showFreelancer && (
-        <>
-          <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
-            <h4 className="sectionHeader text-lg mb-4">Freelancer Actions</h4>
-            <div className="actionGrid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              <button disabled={!canFreelancerStart} onClick={startJobPrompt}>Start Job</button>
-              {escrowState === 0 && (!clientHasDeposit || !clientPaidFee) && (
-                <div className="hint">Start Job is disabled until the client deposits and pays the fee.</div>
-             )}
-            </div>
+  <>
+    <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
+      <h4 className="sectionHeader text-lg mb-4">Freelancer Actions</h4>
 
-            <div>
-              <button disabled={!canFreelancerSubmit} onClick={submitProofPrompt}>Submit Proof</button>
-              {canFreelancerSubmit && (
-                <div className="hint">
-                  Follow this guide for the IPFS Hashing of your job proof for submission:
-                  <ol className="ipfsGuideList">
-                    <li>Sign in on <a href="https://app.pinata.cloud/auth/signin" target="_blank" rel="noopener noreferrer">Pinata</a>.</li>
-                    <li>Tap the "Add" button to upload your proof file for hashing.</li>
-                    <li>Choose Private or Public upload and get it uploaded.</li>
-                    <li>Copy the file CID from the Private or Public tab.</li>
-                    <li>Paste the CID here (with or without ipfs://) and tap OK.</li>
-                    <li>If your wallet doesn't pop up, check your extension or app.</li>
-                  </ol>
-                </div>
-              )}
-            </div>
+      {/* All actions now in the same grid for consistent size/style */}
+      <div className="actionGrid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Start Job */}
+        <button disabled={!canFreelancerStart} onClick={startJobPrompt}>
+          Start Job
+        </button>
 
-            <div>
-              <button 
-                className="danger" 
-                disabled={!canRaiseDispute} 
-                onClick={raiseDispute}
-              >
-                <FaExclamationTriangle size={20} />
-                Raise Dispute
-              </button>
-              {canRaiseDispute && (
-                <div className="hint">
-                  Use the raise dispute button only if the client is unresponsive, abusive, or violating terms after submission.
-                </div>
-              )}
-            </div>
-          </div>
-        </>
+        {/* Submit Proof */}
+        <button disabled={!canFreelancerSubmit} onClick={submitProofPrompt}>
+          Submit Proof
+        </button>
+
+        {/* Raise Dispute */}
+        <button
+          className="danger"
+          disabled={!canRaiseDispute}
+          onClick={raiseDispute}
+        >
+          <FaExclamationTriangle size={20} />
+          Raise Dispute
+        </button>
+      </div>
+
+      {/* Hints - moved outside the grid but still conditional */}
+      {escrowState === 0 && (!clientHasDeposit || !clientPaidFee) && (
+        <div className="hint mt-4">
+          Start Job is disabled until the client deposits and pays the fee.
+        </div>
       )}
 
+      {canFreelancerSubmit && (
+        <div className="hint mt-4">
+          Follow this guide for the IPFS Hashing of your job proof for submission:
+          <ol className="ipfsGuideList">
+            <li>Sign in on <a href="https://app.pinata.cloud/auth/signin" target="_blank" rel="noopener noreferrer">Pinata</a>.</li>
+            <li>Tap the "Add" button to upload your proof file for hashing.</li>
+            <li>Choose Private or Public upload and get it uploaded.</li>
+            <li>Copy the file CID from the Private or Public tab.</li>
+            <li>Paste the CID here (with or without ipfs://) and tap OK.</li>
+            <li>If your wallet doesn't pop up, check your extension or app.</li>
+          </ol>
+        </div>
+      )}
+
+      {canRaiseDispute && (
+        <div className="hint mt-4">
+          Use the raise dispute button only if the client is unresponsive, abusive, or violating terms after submission.
+        </div>
+      )}
+    </div>
+    </>
+    )}
       {showOracle && (
         <>
           <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
@@ -1287,7 +1342,7 @@ const nextAction = (() => {
     {historyLoading && (
       <div className="text-center py-12">
         <FaSyncAlt className="animate-spin mx-auto text-4xl text-gray-400" />
-        <p className="mt-4 text-gray-400">Loading your escrows...</p>
+        <p className="mt-4 text-gray-400">Loading your escrow history...</p>
       </div>
     )}
 
@@ -1305,37 +1360,48 @@ const nextAction = (() => {
     )}
 
     {myEscrows.length > 0 && (
-      <div className="space-y-6">
-        {myEscrows.map((e) => (
-          <div
-            key={e.escrow}
-            onClick={() => {
-              setEscrow(e.escrow);
-              setActiveTab('dashboard');
-              toast.success('Escrow loaded!');
-            }}
-            className="bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg hover:shadow-xl hover:border-green-600/50 transition cursor-pointer"
-          >
-            <div className="flex justify-between items-start">
-              <div>
-                <div className="mono text-lg break-all">{e.escrow}</div>
-                <div className="text-sm text-gray-400 mt-2">
-                  Client: {e.client?.slice(0, 6)}...{e.client?.slice(-4)} | 
-                  Freelancer: {e.freelancer?.slice(0, 6)}...{e.freelancer?.slice(-4)}
-                </div>
-              </div>
-              <span className={`px-4 py-2 rounded-full text-sm font-bold ${
-                e.isActive ? 'bg-green-600/70 text-green-100' : 'bg-gray-600 text-gray-300'
-              }`}>
-                {e.stateLabel}
-              </span>
+  <div className="space-y-4">
+    {myEscrows.map((e) => (
+      <div
+        key={e.escrow}
+        onClick={() => {
+          if (e.isActive) {
+            setEscrow(e.escrow);
+            setActiveTab('dashboard');
+            toast.success('Escrow loaded!');
+          }
+        }}
+        className={`bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-4 shadow-md transition-all ${
+          e.isActive
+            ? 'hover:shadow-lg hover:border-green-600/50 cursor-pointer'
+            : 'opacity-70 cursor-not-allowed'
+        }`}
+      >
+        <div className="flex justify-between items-start gap-3">
+          <div className="flex-1 min-w-0">
+            {/* Shortened escrow address */}
+            <div className="mono text-sm font-medium break-all text-gray-200">
+              {e.escrow.slice(0, 8)}...{e.escrow.slice(-6)}
+            </div>
+            <div className="text-xs text-gray-400 mt-1">
+              Client: {e.client?.slice(0, 6)}...{e.client?.slice(-4)} | 
+              Freelancer: {e.freelancer?.slice(0, 6)}...{e.freelancer?.slice(-4)}
             </div>
           </div>
-        ))}
+          {/* State badge */}
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+            e.isActive ? 'bg-green-600/80 text-green-100' : 'bg-gray-600 text-gray-300'
+          }`}>
+            {e.stateLabel}
+          </span>
+        </div>
       </div>
-    )}
+    ))}
   </div>
 )}
+  </div>
+)}
+
 </main>
 
 <footer className="mt-26 pb-8 text-center">
