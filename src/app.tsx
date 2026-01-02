@@ -1456,8 +1456,7 @@ const nextAction = (() => {
   <p className="text-gray-500 text-sm mb-4">Connect with us</p>
   <div className="flex justify-center gap-8">
     <a 
-      href="https://t.me/theforjebot"  // ← Replace with your bot link, e.g., https://t.me/ForjeBot
-      target="_blank" 
+      href="https://t.me/AfriLance_bot"  
       rel="noopener noreferrer"
       className="text-blue-400 hover:text-blue-300 transition"
     >
@@ -1466,7 +1465,7 @@ const nextAction = (() => {
     </a>
     
     <a 
-      href="https://t.me/theforje"  // ← Replace with group invite, e.g., https://t.me/+abc123
+      href="https://t.me/AfriLanceCommunity"  
       target="_blank" 
       rel="noopener noreferrer"
       className="text-blue-400 hover:text-blue-300 transition"
@@ -1476,7 +1475,7 @@ const nextAction = (() => {
     </a>
     
     <a 
-      href="https://x.com/theforje"  // ← Replace with your X handle, e.g., https://x.com/forjegigs
+      href="https://x.com/AfriLanceHQ" 
       target="_blank" 
       rel="noopener noreferrer"
       className="text-white hover:text-gray-300 transition"
@@ -1485,11 +1484,15 @@ const nextAction = (() => {
       <p className="text-xs mt-1 text-gray-400">X</p>
     </a>
   </div>
-  
-  <p className="text-gray-600 text-xs mt-8">
-    © 2025 AfriLance — Empowering African Freelancers
-  </p>
-</footer>
+
+        <p className="text-gray-600 text-xs mt-4">
+          support@afrilance.xyz
+        </p>
+
+        <p className="text-gray-600 text-xs mt-8">
+          © 2025 AfriLance - Empowering African Freelancers
+        </p>
+      </footer>
     </div>
   );
 }
