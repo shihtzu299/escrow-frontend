@@ -1315,26 +1315,26 @@ const nextAction = (() => {
 
       {/* Funding Phase - Step by Step */}
       {escrowState === 0 && !tokenApprovedOnce && (
-        <button onClick={approveSpending} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-green-600 text-white shadow-md hover:bg-green-500 hover:shadow-xl transition-all">
-          <FaCheckCircle size={20} /> Approve {settlement}
+        <button onClick={approveSpending} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-green-600 text-white shadow-md hover:bg-green-500 hover:shadow-xl transition-all col-span-full">
+          <FaCheckCircle size={20} /> Approve USDT{settlement}
         </button>
       )}
 
       {escrowState === 0 && tokenApprovedOnce && !clientHasDeposit && (
-        <button onClick={depositFn} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all">
+        <button onClick={depositFn} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all col-span-full">
           Deposit
         </button>
       )}
 
       {escrowState === 0 && clientHasDeposit && !clientPaidFee && (
-        <button onClick={payFee} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all">
+        <button onClick={payFee} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all col-span-full">
           Pay Fee ({formatUnits(BNB_FEE || 0n, 18)} BNB)
         </button>
       )}
 
       {/* Refund (No Start) — Only after full funding and deadline passed */}
       {canRefundNoStart && (
-        <button onClick={refundNoStart} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-orange-600 text-white shadow-md hover:bg-orange-500 hover:shadow-xl transition-all">
+        <button onClick={refundNoStart} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-orange-600 text-white shadow-md hover:bg-orange-500 hover:shadow-xl transition-all col-span-full">
           Refund (No Start)
         </button>
       )}
@@ -1362,7 +1362,7 @@ const nextAction = (() => {
             const url = `https://x.com/intent/post?text=${text}`;
             window.open(url, '_blank', 'width=600,height=400');
           }}
-          className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all"
+          className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all col-span-full"
         >
           <FaXTwitter size={22} /> Share on X
         </button>
@@ -1378,21 +1378,21 @@ const nextAction = (() => {
     
       {/* Ready to Start */}
       {escrowState === 0 && clientHasDeposit && clientPaidFee && (
-        <button onClick={startJobPrompt} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all">
+        <button onClick={startJobPrompt} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all col-span-full">
           Start Job
         </button>
       )}
 
       {/* Working or Revising */}
       {(escrowState === 1 || escrowState === 4) && (
-        <button onClick={submitProofPrompt} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-green-600 text-white shadow-md hover:bg-green-500 hover:shadow-xl transition-all">
+        <button onClick={submitProofPrompt} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-green-600 text-white shadow-md hover:bg-green-500 hover:shadow-xl transition-all col-span-full">
           Submit Proof
         </button>
       )}
 
       {/* After Submit — Can Dispute */}
       {(escrowState === 2 || escrowState === 4) && (
-        <button onClick={raiseDispute} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-red-600 text-white shadow-md hover:bg-red-500 hover:shadow-xl transition-all">
+        <button onClick={raiseDispute} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-red-600 text-white shadow-md hover:bg-red-500 hover:shadow-xl transition-all col-span-full">
           <FaExclamationTriangle size={20} /> Raise Dispute
         </button>
       )}
@@ -1406,7 +1406,7 @@ const nextAction = (() => {
             const url = `https://x.com/intent/post?text=${text}`;
             window.open(url, '_blank', 'width=600,height=400');
           }}
-          className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all"
+          className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all col-span-full"
         >
           <FaXTwitter size={22} /> Share on X
         </button>
