@@ -20,6 +20,7 @@ import { FaTelegramPlane, FaTwitter } from 'react-icons/fa';
 import factoryAbi from './abis/ForjeEscrowFactory.json';
 import escrowAbi from './abis/ForjeGigEscrow.json';
 import { createClient } from '@supabase/supabase-js';
+import { FaXTwitter } from 'react-icons/fa6';
 
 // ===== env =====
 const env = (import.meta as any).env as Record<string, string>;
@@ -523,6 +524,59 @@ const canRefundNoStart = isStartDeadlineExceeded;
 
   const bscanTx = (hash: string) => `https://bscscan.com/tx/${hash}`;
 
+    // Auto-refresh My Escrows history when tab is opened
+  useEffect(() => {
+  if (activeTab === 'myescrows' && address) {
+    const refreshHistory = async () => {
+      setHistoryLoading(true);
+      setHistoryError(null);
+
+      try {
+        const lowerAddress = address.toLowerCase();
+
+        // Client escrows
+        const { data: clientData } = await supabase
+          .from('escrows')
+          .select('id, data')
+          .ilike('data->>client', lowerAddress);
+
+        // Freelancer escrows
+        const { data: freelancerData } = await supabase
+          .from('escrows')
+          .select('id, data')
+          .ilike('data->>freelancer', lowerAddress);
+
+        const combined = [...(clientData || []), ...(freelancerData || [])];
+        const uniqueMap = new Map();
+        combined.forEach((row: any) => uniqueMap.set(row.id, row));
+
+        const data = Array.from(uniqueMap.values());
+
+        // Sort newest first
+        data.sort((a: any, b: any) => 
+          new Date(b.data.updated_at || 0).getTime() - new Date(a.data.updated_at || 0).getTime()
+        );
+
+        const escrows = data.map((row: any) => ({
+          escrow: row.id,
+          ...row.data,
+          isActive: !row.data.completed,
+          stateLabel: STATE_LABEL[row.data.state || 0] || 'Unknown'
+        }));
+
+        setMyEscrows(escrows);
+      } catch (err: any) {
+        console.error('Auto-refresh failed:', err);
+        setHistoryError('Failed to refresh history');
+      } finally {
+        setHistoryLoading(false);
+      }
+    };
+
+    refreshHistory();
+  }
+}, [activeTab, address]);
+
   // ===== FINAL: Create New Escrow + Auto-Detect & Load =====
   const createNewEscrow = async () => {
     try {
@@ -977,7 +1031,7 @@ const nextAction = (() => {
         </p>
         <button
           onClick={connect}
-          className="mt-6 px-10 py-3 text-base font-semibold !rounded-lg bg-gray-800/70 hover:bg-gray-700/80 border border-gray-600 shadow-lg flex items-center justify-center gap-3 mx-auto transition-all"
+          className="px-5 py-2 rounded-xl bg-red-900/60 hover:bg-red-800/80 hover:shadow-lg border border-red-800 text-red-300 font-medium transition-all flex items-center gap-2 whitespace-nowrap transform hover:scale-105"
         >
           <FaWallet size={22} />
           Connect Wallet
@@ -1022,7 +1076,7 @@ const nextAction = (() => {
             <div className="flex items-center gap-3">
               {wrongNet && (
                 <button 
-                  className="px-4 py-2 !rounded-xl bg-gray-700/80 hover:bg-gray-600 border border-gray-600 text-sm font-medium transition-all whitespace-nowrap"
+                  className="px-4 py-2 rounded-xl bg-gray-700/80 hover:bg-gray-600 hover:shadow-md border border-gray-600 text-sm font-medium transition-all whitespace-nowrap transform hover:scale-105"
                   onClick={() => ensureBsc(provider)}
                 >
                   Switch to BSC
@@ -1030,7 +1084,7 @@ const nextAction = (() => {
               )}
               <button
                 onClick={hardDisconnect}
-                className="px-5 py-2 !rounded-xl bg-red-900/50 hover:bg-red-900/70 border border-red-800/80 text-red-300 font-medium transition-all flex items-center gap-2 whitespace-nowrap"
+                className="px-5 py-2 rounded-xl bg-red-900/60 hover:bg-red-800/80 hover:shadow-lg border border-red-800 text-red-300 font-medium transition-all flex items-center gap-2 whitespace-nowrap transform hover:scale-105"
               >
                 <FaWallet size={16} />
                 Disconnect
@@ -1055,53 +1109,64 @@ const nextAction = (() => {
 <main className="main max-w-4xl mx-auto px-6 pb-12 ">
   {activeTab === 'dashboard' ? (
     <>
-      {/* ALL YOUR CURRENT DASHBOARD CONTENT - unchanged */}
-      {escrow && escrowState !== undefined && (
-        <div className="mt-8">
-  {/* Horizontal scroll container on mobile, full width on larger screens */}
-  <div className="overflow-x-auto scrollbar-hide px-4 md:px-0">
-    <div className="flex items-center justify-between gap-4 min-w-max md:min-w-0 md:gap-2">
-      {STEPS.map((step, index) => (
-        <div 
-          key={step.state} 
-          className="relative flex flex-col items-center flex-1 md:flex-initial"
-        >
-          {/* Circle */}
-          <div
-            className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all shadow-md ${
-              escrowState === step.state
-                ? 'bg-green-500 text-white shadow-green-500/60'
-                : escrowState > step.state
-                ? 'bg-green-600/80 text-white'
-                : 'bg-gray-700 text-gray-400'
-            }`}
-          >
-            {escrowState > step.state ? (
-              <FaCheckCircle size={20} />
-            ) : (
-              index + 1
-            )}
-          </div>
 
-          {/* Label */}
-          <p className="mt-2 text-xs text-center text-gray-300 leading-tight">
-            {step.label}
-          </p>
+{escrow && escrowState !== undefined && (
+  <div className="mt-8">
+    <div className="overflow-x-auto scrollbar-hide px-4 md:px-0">
+      <div className="flex items-center justify-between gap-4 min-w-max md:min-w-0 md:gap-2">
+        {STEPS.map((step, index) => {
+          let isFilled = false;
+          if (step.state <= 2) {
+            isFilled = escrowState > step.state;
+          } else if (step.state === 4) { // Revised
+            isFilled = escrowState === 4 || (escrowState > 4 && escrowState !== 3); // Filled if revised or disputed/resolved after revision
+          } else if (step.state === 3) { // Approved
+            isFilled = escrowState === 3 || (escrowState > 3 && escrowState !== 4 && escrowState !== 5); // Filled if approved or resolved after approve
+          } else if (step.state === 5) { // Disputed
+            isFilled = escrowState === 5 || escrowState === 6; // Filled if disputed or resolved
+          } else if (step.state === 6) { // Resolved
+            isFilled = escrowState === 6;
+          }
 
-          {/* Connecting line */}
-          {index < STEPS.length - 1 && (
-            <div
-              className={`absolute top-6 left-12 right-0 h-0.5 -z-10 transition-all ${
-                escrowState > step.state ? 'bg-green-500' : 'bg-gray-700'
-              }`}
-            />
-          )}
-        </div>
-      ))}
+          return (
+            <div 
+              key={step.state} 
+              className="relative flex flex-col items-center flex-1 md:flex-initial"
+            >
+              <div
+                className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all shadow-md ${
+                  escrowState === step.state
+                    ? 'bg-green-500 text-white shadow-green-500/60'
+                    : isFilled
+                    ? 'bg-green-600/80 text-white'
+                    : 'bg-gray-700 text-gray-400'
+                }`}
+              >
+                {isFilled ? (
+                  <FaCheckCircle size={20} />
+                ) : (
+                  index + 1
+                )}
+              </div>
+
+              <p className="mt-2 text-xs text-center text-gray-300 leading-tight">
+                {step.label}
+              </p>
+
+              {index < STEPS.length - 1 && (
+                <div
+                  className={`absolute top-6 left-12 right-0 h-0.5 -z-10 transition-all ${
+                    isFilled ? 'bg-green-500' : 'bg-gray-700'
+                  }`}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   </div>
-</div>
-      )}
+)}
 
       <div className="formGroup bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg mb-8">
         <div className="flex gap-3 items-end">
@@ -1121,7 +1186,7 @@ const nextAction = (() => {
                 navigator.clipboard.writeText(escrow);
                 toast.success('Escrow address copied!');
               }}
-              className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center gap-2 whitespace-nowrap"
+              className="px-6 py-3 bg-gray-700 hover:bg-gray-600 hover:shadow-md rounded-lg flex items-center gap-2 whitespace-nowrap transition-all transform hover:scale-105"
             >
               <FaCopy size={18} />
               Copy
@@ -1129,7 +1194,7 @@ const nextAction = (() => {
           )}
         </div>
         <div className="buttonGroup mt-4">
-          <button className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg" onClick={readStateAll}>
+          <button className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 hover:shadow-md rounded-lg transition-all transform hover:scale-105" onClick={readStateAll}>
             <FaSyncAlt size={18} />
             Refresh Status
           </button>
@@ -1243,94 +1308,113 @@ const nextAction = (() => {
         </div>
       )}
 
-      {showClient && (
+      {showClient && !isDepositDeadlineExceeded && (
+    <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
+    <h4 className="sectionHeader text-lg mb-4">Client Actions</h4>
+    <div className="actionGrid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      {/* Funding Phase - Step by Step */}
+      {escrowState === 0 && !tokenApprovedOnce && (
+        <button onClick={approveSpending} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-green-600 text-white shadow-md hover:bg-green-500 hover:shadow-xl transition-all">
+          <FaCheckCircle size={20} /> Approve {settlement}
+        </button>
+      )}
+
+      {escrowState === 0 && tokenApprovedOnce && !clientHasDeposit && (
+        <button onClick={depositFn} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all">
+          Deposit
+        </button>
+      )}
+
+      {escrowState === 0 && clientHasDeposit && !clientPaidFee && (
+        <button onClick={payFee} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all">
+          Pay Fee ({formatUnits(BNB_FEE || 0n, 18)} BNB)
+        </button>
+      )}
+
+      {/* Refund (No Start) — Only after full funding and deadline passed */}
+      {canRefundNoStart && (
+        <button onClick={refundNoStart} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-orange-600 text-white shadow-md hover:bg-orange-500 hover:shadow-xl transition-all">
+          Refund (No Start)
+        </button>
+      )}
+
+      {/* Submitted or Revised — Review Phase */}
+      {(escrowState === 2 || escrowState === 4) && (
         <>
-          <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
-            <h4 className="sectionHeader text-lg mb-4">Client Actions</h4>
-            <div className="actionGrid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              <button disabled={!canClientApproveToken} onClick={approveSpending} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all"><FaCheckCircle size={20} />Approve {settlement}</button>
-              <button disabled={!canClientDeposit} onClick={depositFn} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Deposit</button>
-              <button disabled={!canClientPayFee} onClick={payFee} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Pay Fee ({formatUnits(BNB_FEE || 0n, 18)} BNB)</button>
-              <button disabled={!canRefundNoStart} onClick={refundNoStart} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Refund (No Start)</button>
-              <button disabled={!canClientRevise} onClick={requestRevisionPrompt} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Request Revision</button>
-              <button disabled={!canClientApprove} onClick={approveJob} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all">Approve (release fund)</button>
-              <div>
-                <button 
-                  className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-xl transition-all"
-                  disabled={!canRaiseDispute} 
-                  onClick={raiseDispute}
-                >
-                  <FaExclamationTriangle size={20} />
-                  Raise Dispute
-                </button>
-                {canRaiseDispute && (
-                  <div className="hint">
-                    Use the raise dispute button only if the freelancer is unresponsive, abusive, or violating terms after revision request.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <button onClick={requestRevisionPrompt} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-orange-600 text-white shadow-md hover:bg-orange-500 hover:shadow-xl transition-all">
+            Request Revision
+          </button>
+          <button onClick={approveJob} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-green-600 text-white shadow-md hover:bg-green-500 hover:shadow-xl transition-all">
+            Approve (Release Funds)
+          </button>
+          <button onClick={raiseDispute} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-red-600 text-white shadow-md hover:bg-red-500 hover:shadow-xl transition-all">
+            <FaExclamationTriangle size={20} /> Raise Dispute
+          </button>
         </>
       )}
 
-      {showFreelancer && (
-  <>
-    <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
-      <h4 className="sectionHeader text-lg mb-4">Freelancer Actions</h4>
-
-      {/* All actions now in the same grid for consistent size/style */}
-      <div className="actionGrid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Start Job */}
-        <button disabled={!canFreelancerStart} onClick={startJobPrompt}>
-          Start Job
-        </button>
-
-        {/* Submit Proof */}
-        <button disabled={!canFreelancerSubmit} onClick={submitProofPrompt}>
-          Submit Proof
-        </button>
-
-        {/* Raise Dispute */}
+      {/* Completed — Share on X */}
+      {(escrowState === 3 || escrowState === 6) && (
         <button
-          className="danger"
-          disabled={!canRaiseDispute}
-          onClick={raiseDispute}
+          onClick={() => {
+            const text = encodeURIComponent(`Just completed a gig on @AfriLanceHQ! Paid securely via decentralized escrow on BNB Chain. Freelancers & clients — try it: https://escrow.afrilance.xyz`);
+            const url = `https://x.com/intent/post?text=${text}`;
+            window.open(url, '_blank', 'width=600,height=400');
+          }}
+          className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all"
         >
-          <FaExclamationTriangle size={20} />
-          Raise Dispute
+          <FaXTwitter size={22} /> Share on X
         </button>
-      </div>
-
-      {/* Hints - moved outside the grid but still conditional */}
-      {escrowState === 0 && (!clientHasDeposit || !clientPaidFee) && (
-        <div className="hint mt-4">
-          Start Job is disabled until the client deposits and pays the fee.
-        </div>
-      )}
-
-      {canFreelancerSubmit && (
-        <div className="hint mt-4">
-          Follow this guide for the IPFS Hashing of your job proof for submission:
-          <ol className="ipfsGuideList">
-            <li>Sign in on <a href="https://app.pinata.cloud/auth/signin" target="_blank" rel="noopener noreferrer">Pinata</a>.</li>
-            <li>Tap the "Add" button to upload your proof file for hashing.</li>
-            <li>Choose Private or Public upload and get it uploaded.</li>
-            <li>Copy the file CID from the Private or Public tab.</li>
-            <li>Paste the CID here (with or without ipfs://) and tap OK.</li>
-            <li>If your wallet doesn't pop up, check your extension or app.</li>
-          </ol>
-        </div>
-      )}
-
-      {canRaiseDispute && (
-        <div className="hint mt-4">
-          Use the raise dispute button only if the client is unresponsive, abusive, or violating terms after submission.
-        </div>
       )}
     </div>
-    </>
-    )}
+  </div>
+)}
+
+{showFreelancer && !isDepositDeadlineExceeded && (
+  <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
+    <h4 className="sectionHeader text-lg mb-4">Freelancer Actions</h4>
+    <div className="actionGrid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    
+      {/* Ready to Start */}
+      {escrowState === 0 && clientHasDeposit && clientPaidFee && (
+        <button onClick={startJobPrompt} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all">
+          Start Job
+        </button>
+      )}
+
+      {/* Working or Revising */}
+      {(escrowState === 1 || escrowState === 4) && (
+        <button onClick={submitProofPrompt} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-green-600 text-white shadow-md hover:bg-green-500 hover:shadow-xl transition-all">
+          Submit Proof
+        </button>
+      )}
+
+      {/* After Submit — Can Dispute */}
+      {(escrowState === 2 || escrowState === 4) && (
+        <button onClick={raiseDispute} className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-red-600 text-white shadow-md hover:bg-red-500 hover:shadow-xl transition-all">
+          <FaExclamationTriangle size={20} /> Raise Dispute
+        </button>
+      )}
+
+      {/* Completed — Share */}
+      {(escrowState === 3 || escrowState === 6) && (
+        <button
+          onClick={() => {
+            const status = 'submitted'; // Default to 'submitted' since state is 3 or 6 (completed, no resubmit)
+            const text = encodeURIComponent(`Just ${status} my work on @AfriLanceHQ! Secure freelance payments on BNB Chain. Clients — hire with confidence: https://escrow.afrilance.xyz`);
+            const url = `https://x.com/intent/post?text=${text}`;
+            window.open(url, '_blank', 'width=600,height=400');
+          }}
+          className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all"
+        >
+          <FaXTwitter size={22} /> Share on X
+        </button>
+      )}
+    </div>
+  </div>
+)}    
+
       {showOracle && (
         <>
           <div className="mt-8 bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg">
