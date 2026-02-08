@@ -30,7 +30,12 @@ html,
 body {
   margin: 0;
   padding: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    sans-serif;
   background-color: var(--bg);
   color: var(--text);
 }
@@ -62,11 +67,29 @@ body {
   opacity: 0.55;
   background:
     radial-gradient(circle at 0 0, rgba(59, 130, 246, 0.18), transparent 55%),
-    radial-gradient(circle at 100% 0, rgba(16, 185, 129, 0.16), transparent 55%),
-    radial-gradient(circle at 50% 100%, rgba(129, 140, 248, 0.18), transparent 60%),
+    radial-gradient(
+      circle at 100% 0,
+      rgba(16, 185, 129, 0.16),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 50% 100%,
+      rgba(129, 140, 248, 0.18),
+      transparent 60%
+    ),
     linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.98));
-  -webkit-mask-image: radial-gradient(circle at center, black 0, black 65%, transparent 100%);
-  mask-image: radial-gradient(circle at center, black 0, black 65%, transparent 100%);
+  -webkit-mask-image: radial-gradient(
+    circle at center,
+    black 0,
+    black 65%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    circle at center,
+    black 0,
+    black 65%,
+    transparent 100%
+  );
   z-index: 0;
 }
 
@@ -90,9 +113,18 @@ body {
   max-width: 720px;
   margin: 18px auto 0;
   padding: 18px 14px 18px;
-  background: radial-gradient(circle at top left, rgba(37, 99, 235, 0.24), transparent 55%),
-              radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.16), transparent 55%),
-              linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.98));
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(37, 99, 235, 0.24),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(16, 185, 129, 0.16),
+      transparent 55%
+    ),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.98));
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-soft);
   border: 1px solid rgba(148, 163, 184, 0.35);
@@ -120,13 +152,19 @@ body {
   min-width: 0;
   padding: 10px 12px;
   border-radius: 14px;
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(15, 23, 42, 0.98));
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.94),
+    rgba(15, 23, 42, 0.98)
+  );
   border: 1px solid rgba(31, 41, 55, 0.9);
   box-shadow: var(--shadow-subtle);
 }
 
 .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
 }
 
 .small {
@@ -157,7 +195,12 @@ button {
   padding: 7px 14px;
   background: #1f2937;
   color: var(--text);
-  transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), opacity var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    border-color var(--transition-fast),
+    opacity var(--transition-fast);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -221,7 +264,11 @@ button:not(:disabled):active {
   margin: 10px auto 0;
   padding: 12px 14px;
   border-radius: 12px; /* was 999px */
-  background: linear-gradient(90deg, rgba(59,130,246,0.12), rgba(16,185,129,0.06));
+  background: linear-gradient(
+    90deg,
+    rgba(59, 130, 246, 0.12),
+    rgba(16, 185, 129, 0.06)
+  );
   border: 1px solid rgba(59, 130, 246, 0.75); /* stronger accent border */
   color: var(--text);
   display: flex;
@@ -282,7 +329,10 @@ select {
   background: rgba(15, 23, 42, 0.96);
   color: var(--text);
   outline: none;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background var(--transition-fast);
 }
 
 input::placeholder {
@@ -303,8 +353,10 @@ select {
     linear-gradient(135deg, #9ca3af 50%, transparent 50%);
   background-position:
     calc(100% - 12px) calc(50% - 3px),
-    calc(100% - 8px)  calc(50% - 3px);
-  background-size: 6px 6px, 6px 6px;
+    calc(100% - 8px) calc(50% - 3px);
+  background-size:
+    6px 6px,
+    6px 6px;
   background-repeat: no-repeat;
 }
 
@@ -414,18 +466,22 @@ select {
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   padding: 12px;
 }
 
 .modalBox {
   max-width: 560px;
   width: 100%;
-  background: linear-gradient(180deg, rgba(7,17,38,0.98), rgba(6,10,28,0.98));
+  background: linear-gradient(
+    180deg,
+    rgba(7, 17, 38, 0.98),
+    rgba(6, 10, 28, 0.98)
+  );
   border-radius: 12px;
   padding: 16px;
-  border: 1px solid rgba(148,163,184,0.14);
-  box-shadow: 0 20px 50px rgba(2,6,23,0.65);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  box-shadow: 0 20px 50px rgba(2, 6, 23, 0.65);
   color: var(--text);
 }
 
@@ -448,8 +504,8 @@ select {
   padding: 8px;
   font-family: ui-monospace, monospace;
   resize: none;
-  border: 1px solid rgba(31,41,55,0.9);
-  background: rgba(10,14,24,0.9);
+  border: 1px solid rgba(31, 41, 55, 0.9);
+  background: rgba(10, 14, 24, 0.9);
   color: var(--text);
   font-size: 13px;
 }
@@ -464,7 +520,7 @@ select {
   border-radius: 10px;
   padding: 8px 12px;
   background: linear-gradient(135deg, var(--accent-strong), #22c55e);
-  border: 1px solid rgba(59,130,246,0.5);
+  border: 1px solid rgba(59, 130, 246, 0.5);
   color: var(--text);
   cursor: pointer;
 }
@@ -492,11 +548,18 @@ select {
 }
 
 .highlightButton {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(16, 185, 129, 0.15));
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.2),
+    rgba(16, 185, 129, 0.15)
+  );
   border: 1px solid rgba(59, 130, 246, 0.6);
   font-weight: 600;
 }
-.highlightButton:disabled { opacity: 0.5; cursor: not-allowed; }
+.highlightButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* Action Grid Buttons - with proper hover effects */
 .actionGrid button {
@@ -596,7 +659,7 @@ select {
 }
 
 .tabButton::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -1px;
   left: 0;
@@ -630,4 +693,182 @@ select {
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.15s ease-out forwards;
+}
+
+/* Mobile space compression */
+@media (max-width: 640px) {
+  .formGroup,
+  .statusPanel,
+  .actionGrid,
+  .nextStepCard {
+    padding: 1rem !important;
+  }
+
+  .sectionHeader {
+    margin-bottom: 0.75rem !important;
+  }
+
+  .main {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}
+
+/* One-time success pulse */
+@keyframes successPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+.success-pulse {
+  animation: successPulse 1s ease-out;
+}
+
+/* ===============================
+   UMA DISPUTE BUTTONS
+   =============================== */
+
+.uma-btn {
+  width: 100%;
+  padding: 16px;
+  font-size: 18px;
+  font-weight: 600;
+
+  border-radius: 14px;
+  border: 1px solid rgba(255, 200, 0, 0.4);
+
+  background: linear-gradient(135deg, #ca8a04, #eab308);
+
+  color: white;
+
+  cursor: pointer;
+
+  transition: all 0.2s ease-in-out;
+
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.25);
+}
+
+.uma-btn:hover {
+  background: linear-gradient(135deg, #eab308, #fde047);
+
+  transform: scale(1.03);
+
+  box-shadow: 0 0 22px rgba(234, 179, 8, 0.6);
+}
+
+.uma-btn:active {
+  transform: scale(0.97);
+}
+
+.uma-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Green finalize button */
+
+.uma-btn-finalize {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+
+  border-color: rgba(34, 197, 94, 0.4);
+
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.25);
+}
+
+.uma-btn-finalize:hover {
+  background: linear-gradient(135deg, #22c55e, #4ade80);
+
+  box-shadow: 0 0 22px rgba(34, 197, 94, 0.6);
+}
+
+/* Ensure buttons remain hoverable even if a parent sets pointer-events */
+button {
+  pointer-events: auto;
+}
+
+/* Footer icon hover fallback */
+footer a {
+  transition:
+    transform 150ms ease,
+    color 150ms ease,
+    opacity 150ms ease;
+}
+
+footer a:hover {
+  transform: translateY(-2px) scale(1.04);
+  opacity: 0.9;
+}
+
+/* ===============================
+   RESTORE HOVER FOR TOP CONTROLS
+   =============================== */
+
+/* A base interactive feel */
+.ui-btn {
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease,
+    filter 150ms ease,
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+  will-change: transform;
+}
+
+.ui-btn:hover:not(:disabled) {
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+  filter: brightness(1.06);
+}
+
+.ui-btn:active:not(:disabled) {
+  transform: translateY(0px) scale(0.99);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+/* Network toggle buttons (BNB/Base) */
+.net-btn {
+  transition:
+    transform 150ms ease,
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.net-btn:hover:not(:disabled) {
+  transform: scale(1.04);
+  filter: brightness(1.08);
+}
+
+/* Refresh button spin + hover already exists, this just restores pop */
+.refresh-btn:hover:not(:disabled) {
+  transform: translateY(-1px) scale(1.03);
+}
+
+/* Switch-to button (wrong network) */
+.switch-btn:hover:not(:disabled) {
+  transform: translateY(-1px) scale(1.04);
+  filter: brightness(1.07);
 }

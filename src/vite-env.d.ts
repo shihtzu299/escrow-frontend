@@ -9,7 +9,7 @@ interface ImportMetaEnv {
   readonly VITE_WALLET_DEEPLINK: string;
   readonly VITE_BOT_TOKEN: string;
   readonly MINIAPP_URL: string;
-  readonly VITE_BOT_ORACLE?: string;  // Optional for the new one we added
+  readonly VITE_ORACLE?: string;  // Optional for the new one we added
 }
 
 interface ImportMeta {
