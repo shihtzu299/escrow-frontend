@@ -25,6 +25,11 @@
         "internalType": "address",
         "name": "_treasuryWallet",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_keeper",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -32,7 +37,32 @@
   },
   {
     "inputs": [],
+    "name": "AlreadyDeposited",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "AssertionAlreadyMade",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "DeadlinePassed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "FeeAlreadyPaid",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "FeeNotPaid",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "GracePeriodActive",
     "type": "error"
   },
   {
@@ -62,7 +92,22 @@
   },
   {
     "inputs": [],
+    "name": "NoAssertion",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NoDeposit",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "NoDispute",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UmaNotSupported",
     "type": "error"
   },
   {
@@ -72,7 +117,17 @@
   },
   {
     "inputs": [],
+    "name": "WrongAssertion",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "ZeroAddress",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAmount",
     "type": "error"
   },
   {
@@ -92,6 +147,75 @@
       }
     ],
     "name": "Approved",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "assertionId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "AssertionDisputed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "assertionId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "freelancerWins",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "expirationTime",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "currency",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "bond",
+        "type": "uint256"
+      }
+    ],
+    "name": "AssertionProposed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "assertionId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "assertedTruthfully",
+        "type": "bool"
+      }
+    ],
+    "name": "AssertionResolved",
     "type": "event"
   },
   {
@@ -249,6 +373,32 @@
   },
   {
     "inputs": [],
+    "name": "DEFAULT_BOND_CURRENCY",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "DEFAULT_LIVENESS",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "DISPUTE_GRACE",
     "outputs": [
       {
@@ -333,6 +483,37 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_assertionId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "assertionDisputedCallback",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_assertionId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bool",
+        "name": "assertedTruthfully",
+        "type": "bool"
+      }
+    ],
+    "name": "assertionResolvedCallback",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "client",
     "outputs": [
@@ -399,6 +580,58 @@
   },
   {
     "inputs": [],
+    "name": "disputeAssertionBond",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "disputeAssertionCurrency",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "disputeAssertionExpiration",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "disputeAssertionId",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "disputeStart",
     "outputs": [
       {
@@ -413,6 +646,19 @@
   {
     "inputs": [],
     "name": "freelancer",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "keeper",
     "outputs": [
       {
         "internalType": "address",
@@ -464,6 +710,43 @@
         "internalType": "string",
         "name": "",
         "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "freelancerWins",
+        "type": "bool"
+      },
+      {
+        "internalType": "string",
+        "name": "evidence",
+        "type": "string"
+      }
+    ],
+    "name": "proposeDisputeResolution",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "proposedFreelancerWins",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -644,13 +927,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "withdrawFees",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   }
 ]
