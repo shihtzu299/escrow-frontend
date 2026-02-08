@@ -1,4 +1,5 @@
 # AfriLance – Decentralized Freelance Ecosystem for Africa
+TESTNET
 
 **Empowering African talent and global clients with secure, transparent, and innovative freelance tools.**
 
@@ -8,18 +9,19 @@ AfriLance is a full-stack decentralized platform built to solve trust, payment, 
 - **Upcoming Gigs Marketplace** — AI-powered job matching, profiles, ratings, and end-to-end freelance collaboration.
 - **Blockchain foundation** — trustless, low-fee infrastructure on BNB Chain & Base.
 
-Live (Escrow flow works fine, but lacks some backend functionality for now): https://escrow.afrilance.xyz  
+Live (Escrow flow works fine, but lacks some backend functionality for now): https://afrilance.xyz  
 X: [@AfriLanceHQ](https://x.com/AfriLanceHQ)  
 Telegram Community: https://t.me/AfriLanceCommunity
 Farcaster: [@AfriLanceHQ](https://farcaster.xyz/AfriLanceHQ)
 Youtube: https://youtube.com/@AfriLanceTube
-Backend Git Repo: https://github.com/shihtzu299/AfriLance-Backend
+Backend Git Repo: https://github.com/shihtzu299
 
 ## Key Features
 
-- Multi-chain support: BNB Testnet + Base Sepolia (mainnet planned)
+- Multi-chain support: BNB Testnet + Base Sepolia (mainnet coming)
 - Stablecoin escrow payments (USDT/USDC) with per-escrow token locking
-- UMA OO oracle for disputes (live on Base Sepolia)
+- UMA OO V3 oracle for disputes (live on Base Sepolia)
+- Multisig address oracle for disputes on BNB Testnet (Chainlink keeper on Mainnet)
 - Strict IPFS proof validation (59-char CID) + in-app visibility for client/freelancer
 - Revision messages readable in-app (no Telegram dependency)
 - Supabase-powered "My Escrows" history tab
@@ -32,10 +34,10 @@ Backend Git Repo: https://github.com/shihtzu299/AfriLance-Backend
 
 | Network         | Chain ID | Status     | Platform Fee       | Oracle              | Explorer Link                     | Factory Address                          |
 |-----------------|----------|------------|--------------------|---------------------|-----------------------------------|------------------------------------------|
-| BNB Testnet     | 97       | Live       | 0.002 BNB          | UMA (temporary)     | https://testnet.bscscan.com       | 0x53765A673fDB5bEA3051dF139598E9AF6a20D274 |
-| Base Sepolia    | 84532    | Live       | 0.00058 ETH        | UMA OO V3           | https://sepolia.basescan.org      | 0xDbFC50f346Ae2328Cd442ADD445506798FEe3286 |
-| BNB Mainnet     | 56       | Planned    | TBD                | Chainlink (planned) | https://bscscan.com               | [Placeholder – to be updated]            |
-| Base Mainnet    | 8453     | Planned    | TBD                | UMA OO V3           | https://basescan.org              | [Placeholder – to be updated]            |
+| BNB Testnet     | 97       | Live       | 0.002 BNB          | Multisig Address   | https://testnet.bscscan.com       | 0xbc389c697272B375FbE0f6917D3B4327391a74ec |
+| Base Sepolia    | 84532    | Live       | 0.00058 ETH        | UMA OO V3           | https://sepolia.basescan.org      | 0xf4cf3C25F45Aa66cD7130a98788c907d44855761 |
+| BNB Mainnet     | 56       | Planned    | 0.002 BNB          | Chainlink (planned) | https://bscscan.com               | [Placeholder – to be updated]      |
+| Base Mainnet    | 8453     | Planned    | 0.00058 ETH        | UMA OO V3           | https://basescan.org              | [Placeholder – to be updated]            |
 
 **Settlement Tokens**  
 - USDT/USDC on both testnets (6 decimals on Base, 18 on BNB)  
@@ -59,7 +61,7 @@ Backend Git Repo: https://github.com/shihtzu299/AfriLance-Backend
 **Smart Contracts**  
 - Solidity ^0.8.20  
 - OpenZeppelin libraries  
-- Hardhat for development
+- Remix IDE for deployment 
 
 **Storage**  
 - IPFS via Pinata (proofs & revisions)
