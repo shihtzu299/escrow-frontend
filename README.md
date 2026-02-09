@@ -79,13 +79,3 @@ To provide simple, decentralized, secure, and accessible financial tools that em
 
 **License** 
 MIT
-
-## Setup
-
-```bash
-git clone https://github.com/[your-username]/afrilance-frontend.git
-cd afrilance-frontend
-npm install
-cp .env.example .env
-# Fill .env: VITE_RPC_URL, VITE_FACTORY, VITE_USDT, VITE_USDC, VITE_WC_PROJECT_ID, etc.
-npm run dev
