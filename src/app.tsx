@@ -2515,27 +2515,35 @@ export default function App() {
             </div>
 
             {/* ===== Dispute Grace (BNB + Base) ===== */}
-            {escrow && escrowState === 5 && (
-              <div className="mt-6 bg-gray-800/60 backdrop-blur border border-red-600/30 rounded-xl p-5 shadow-lg">
-                <h4 className="sectionHeader text-lg mb-2">⏳ Dispute Grace</h4>
-
-                <div className="mt-2 text-xs text-gray-400">
-                  <b>Grace ends:</b>{" "}
-                  {graceEndsAt === 0n
-                    ? "—"
-                    : new Date(Number(graceEndsAt) * 1000).toLocaleString()}
-                  <div className="mt-1">
-                    <b>Status:</b> {graceCountdown}
+            {/* ===== Dispute Grace (hide completely after UMA proposal starts) ===== */}
+            {escrow &&
+              escrowState === 5 &&
+              graceEndsAt > 0n &&
+              emptyAssertion && (
+                <div className="mt-4 bg-gray-900/40 border border-yellow-600/20 rounded-lg p-4">
+                  <div className="text-sm font-semibold text-yellow-200">
+                    ⏳ Dispute Grace
                   </div>
-                  {!canProposeNow && currentChain.id === 84532 && (
-                    <div className="mt-2 text-yellow-300">
-                      ⏳ You can only propose after the grace period ends
-                      (prevents early revert).
+
+                  <div className="mt-2 text-xs text-gray-300">
+                    <div>
+                      <b>Ends at:</b>{" "}
+                      {new Date(Number(graceEndsAt) * 1000).toLocaleString()}
                     </div>
-                  )}
+
+                    <div className="mt-1">
+                      <b>Status:</b> {graceCountdown}
+                    </div>
+
+                    {!canProposeNow && (
+                      <div className="mt-2 text-yellow-300">
+                        ⏳ You can only propose after the grace period ends
+                        (prevents early revert).
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* ===== UMA Dispute Panel (Base only) ===== */}
             {escrow && escrowState === 5 && currentChain.id === 84532 && (
