@@ -2100,15 +2100,11 @@ export default function App() {
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent mb-6 leading-tight whitespace-nowrap">
                 AfriLance Escrow
               </h1>
-              <p className="text-gray-400 text-sm sm:text-lg mb-10 max-w-[92%] sm:max-w-4xl mx-auto leading-snug px-3">
-                Decentralized escrow for stablecoin freelance payments on Base
-                Sepolia & BNB Testnet.
-                <span className="hidden sm:inline"> </span>
-                <span className="block sm:inline">
-                  Set terms, lock funds, and settle securely.
-                </span>
+              <p className="text-gray-400 text-base sm:text-lg mb-10 max-w-lg mx-auto leading-snug px-4">
+                Decentralized escrow for freelance payments on BNB Testnet/Base
+                Sepolia using stablecoins (USDT/USDC). Client and freelancer set
+                their terms and enforce them securely.
               </p>
-
               <button
                 onClick={connect}
                 className="ui-btn px-5 py-2 rounded-xl bg-red-900/60 hover:bg-red-800/80 hover:shadow-lg border border-red-800 text-red-300 font-medium transition-all flex items-center gap-2 whitespace-nowrap transform hover:scale-105"
@@ -2515,35 +2511,27 @@ export default function App() {
             </div>
 
             {/* ===== Dispute Grace (BNB + Base) ===== */}
-            {/* ===== Dispute Grace (hide completely after UMA proposal starts) ===== */}
-            {escrow &&
-              escrowState === 5 &&
-              graceEndsAt > 0n &&
-              emptyAssertion && (
-                <div className="mt-4 bg-gray-900/40 border border-yellow-600/20 rounded-lg p-4">
-                  <div className="text-sm font-semibold text-yellow-200">
-                    ⏳ Dispute Grace
+            {escrow && escrowState === 5 && (
+              <div className="mt-6 bg-gray-800/60 backdrop-blur border border-red-600/30 rounded-xl p-5 shadow-lg">
+                <h4 className="sectionHeader text-lg mb-2">⏳ Dispute Grace</h4>
+
+                <div className="mt-2 text-xs text-gray-400">
+                  <b>Grace ends:</b>{" "}
+                  {graceEndsAt === 0n
+                    ? "—"
+                    : new Date(Number(graceEndsAt) * 1000).toLocaleString()}
+                  <div className="mt-1">
+                    <b>Status:</b> {graceCountdown}
                   </div>
-
-                  <div className="mt-2 text-xs text-gray-300">
-                    <div>
-                      <b>Ends at:</b>{" "}
-                      {new Date(Number(graceEndsAt) * 1000).toLocaleString()}
+                  {!canProposeNow && currentChain.id === 84532 && (
+                    <div className="mt-2 text-yellow-300">
+                      ⏳ You can only propose after the grace period ends
+                      (prevents early revert).
                     </div>
-
-                    <div className="mt-1">
-                      <b>Status:</b> {graceCountdown}
-                    </div>
-
-                    {!canProposeNow && (
-                      <div className="mt-2 text-yellow-300">
-                        ⏳ You can only propose after the grace period ends
-                        (prevents early revert).
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
-              )}
+              </div>
+            )}
 
             {/* ===== UMA Dispute Panel (Base only) ===== */}
             {escrow && escrowState === 5 && currentChain.id === 84532 && (
@@ -2956,22 +2944,6 @@ export default function App() {
                       )}
                     </>
                   )}
-
-                  {/* Completed — Share on X */}
-                  {isEscrowFinished && pendingAction === null && (
-                    <button
-                      onClick={() => {
-                        const text = encodeURIComponent(
-                          `Just completed a gig payment on @AfriLanceHQ! Paid securely via decentralized escrow on BNB Chain/Base using stable coin. clients — Secure your freelance gigs: https://afrilance.xyz`,
-                        );
-                        const url = `https://x.com/intent/post?text=${text}`;
-                        window.open(url, "_blank", "width=600,height=400");
-                      }}
-                      className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all col-span-full"
-                    >
-                      <FaXTwitter size={22} /> Share on X
-                    </button>
-                  )}
                 </div>
               </div>
             )}
@@ -3139,26 +3111,45 @@ export default function App() {
                         )}
                       </button>
                     )}
-
-                  {/* Completed — Share */}
-                  {isEscrowFinished && pendingAction === null && (
-                    <button
-                      onClick={() => {
-                        const status = "submitted";
-                        const text = encodeURIComponent(
-                          `Just ${status} my work on @AfriLanceHQ! Secure freelance payments on BNB/Base Chain. Freelancers — secure your gigs and work with confidence: https://escrow.afrilance.xyz`,
-                        );
-                        const url = `https://x.com/intent/post?text=${text}`;
-                        window.open(url, "_blank", "width=600,height=400");
-                      }}
-                      className="flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all col-span-full"
-                    >
-                      <FaXTwitter size={22} /> Share on X
-                    </button>
-                  )}
                 </div>
               </div>
             )}
+
+            {/* ===== Completed: Share on X (Client + Freelancer) ===== */}
+            {escrow &&
+              isEscrowFinished &&
+              pendingAction === null &&
+              (role === "client" || role === "freelancer") && (
+                <div className="mt-8 bg-gray-800/60 backdrop-blur border border-green-600/40 rounded-xl p-6 shadow-lg">
+                  <h4 className="sectionHeader text-lg mb-2">
+                    🎉 Escrow Completed
+                  </h4>
+
+                  <div className="text-sm text-gray-300">
+                    Payment has been settled successfully. Share your milestone
+                    👇
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      const isClient = role === "client";
+                      const chainName = CHAIN_CONFIG[currentChain.id].chainName;
+
+                      const text = encodeURIComponent(
+                        isClient
+                          ? `✅ Just completed a freelance payment on @AfriLanceHQ (${chainName}) using decentralized stablecoin escrow.\n\nClients: secure your gigs → https://testnet.afrilance.xyz`
+                          : `✅ Just got paid on @AfriLanceHQ (${chainName}) using decentralized stablecoin escrow.\n\nFreelancers: work with confidence → https://testnet.afrilance.xyz`,
+                      );
+
+                      const url = `https://x.com/intent/post?text=${text}`;
+                      window.open(url, "_blank", "width=600,height=400");
+                    }}
+                    className="ui-btn mt-4 flex items-center justify-center gap-3 py-4 text-lg font-semibold rounded-xl bg-blue-600 text-white shadow-md hover:bg-blue-500 hover:shadow-xl transition-all w-full"
+                  >
+                    <FaXTwitter size={22} /> Share on X
+                  </button>
+                </div>
+              )}
 
             {role === "unknown" && escrow && (
               <div className="hint">
@@ -3331,7 +3322,7 @@ export default function App() {
           </a>
 
           <a
-            href="https://github.com/shihtzu299"
+            href="https://github.com/shihtzu299/afrilanceFrontend-Test"
             target="_blank"
             rel="noopener noreferrer"
             className="text-gray-300 hover:text-white transition"
