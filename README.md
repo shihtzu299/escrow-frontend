@@ -1,15 +1,14 @@
-# AfriLance – Decentralized Freelance Ecosystem for Africa
-TESTNET
+## AfriLance Escrow – Decentralized escrow for stablecoin freelance payments on Base Sepolia & BNB Testnet. Set terms, lock funds, and settle securely.
 
 **Empowering African talent and global clients with secure, transparent, and innovative freelance tools.**
 
-AfriLance is a full-stack decentralized platform built to solve trust, payment, and matching issues in freelance work across Africa and beyond. It combines:
+AfriLlance provides secure payments and instant paylinks for the on-chain economy. Send, receive, and protect stablecoin payments across Base and BNB Chain. Whether you need trusted escrow for freelance payments or simple links for everyday funds transfer. It combines:
 
 - **AfriLance Escrow** — secure on-chain payments using USDT/USDC with revision cycles, IPFS proofs, and oracle-mediated disputes.
-- **Upcoming Gigs Marketplace** — AI-powered job matching, profiles, ratings, and end-to-end freelance collaboration.
+- **Afrilance Paylinks** is a decentralized payment link system built on Base that enables instant stablecoin payments through simple, shareable links.
 - **Blockchain foundation** — trustless, low-fee infrastructure on BNB Chain & Base.
 
-Live (Escrow flow works fine, but lacks some backend functionality for now): https://afrilance.xyz  
+Live on TESTNET (Escrow flow works fine, but lacks some backend functionality for now): [https://afrilance.xyz ](https://testnet.afrilance.xyz/) 
 X: [@AfriLanceHQ](https://x.com/AfriLanceHQ)  
 Telegram Community: https://t.me/AfriLanceCommunity
 Farcaster: [@AfriLanceHQ](https://farcaster.xyz/AfriLanceHQ)
@@ -73,17 +72,10 @@ Backend Git Repo: https://github.com/shihtzu299
 - Audit planned before mainnet launch.
 
 **Project Vision**
-AfriLance aims to bring financial inclusion, trust, and efficiency to freelance work across Africa by replacing centralized platforms with blockchain-based escrow, AI matching, and transparent collaboration tools.
+To become the leading on-chain work and payments infrastructure for Africa and emerging markets.
+
+**Mission**
+To provide simple, decentralized, secure, and accessible financial tools that empower individuals and businesses globally.
 
 **License** 
 MIT
-
-## Setup
-
-```bash
-git clone https://github.com/[your-username]/afrilance-frontend.git
-cd afrilance-frontend
-npm install
-cp .env.example .env
-# Fill .env: VITE_RPC_URL, VITE_FACTORY, VITE_USDT, VITE_USDC, VITE_WC_PROJECT_ID, etc.
-npm run dev
