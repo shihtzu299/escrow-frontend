@@ -9,12 +9,12 @@ AfriLance is a full-stack decentralized platform built to solve trust, payment, 
 - **Upcoming Gigs Marketplace** — AI-powered job matching, profiles, ratings, and end-to-end freelance collaboration.
 - **Blockchain foundation** — trustless, low-fee infrastructure on BNB Chain & Base.
 
-Live (Escrow flow works fine, but lacks some backend functionality for now): https://testnetescrow.afrilance.xyz  
+Live on Testnet: https://testnetescrow.afrilance.xyz  
 X: [@AfriLanceHQ](https://x.com/AfriLanceHQ)  
 Telegram Community: https://t.me/AfriLanceCommunity
 Farcaster: [@AfriLanceHQ](https://farcaster.xyz/AfriLanceHQ)
 Youtube: https://youtube.com/@AfriLanceTube
-Backend Git Repo: https://github.com/shihtzu299
+Backend Repo: https://github.com/shihtzu299/escrow-backendBot
 
 ## Key Features
 
