@@ -39,7 +39,7 @@ const USDT = env.VITE_USDT as Address;
 const USDC = env.VITE_USDC as Address;
 const WC_ID = env.VITE_WC_PROJECT_ID as string;
 const WALLET_DEEPLINK = (env.VITE_WALLET_DEEPLINK || "") as string;
-const BOT_ORACLE_ADDRESS = import.meta.env.VITE_BOT_ORACLE as Address;
+const ORACLE_ADDRESS = import.meta.env.VITE_ORACLE as Address;
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY,
@@ -54,7 +54,7 @@ const CHAIN_CONFIG = {
     factory: FACTORY,
     usdt: USDT,
     usdc: USDC,
-    oracle: BOT_ORACLE_ADDRESS, // Centralized on BNB for now
+    oracle: ORACLE_ADDRESS, // Centralized on BNB for now
     rpc: RPC || "https://bsc-testnet-rpc.publicnode.com",
     explorerTx: (hash: string) => `https://testnet.bscscan.com/tx/${hash}`,
     explorerAddr: (addr: string) =>
@@ -151,6 +151,18 @@ const BASE_MAINNET_PARAMS = {
 
 const lower = (x?: string) => (x || "").toLowerCase();
 const now = () => BigInt(Math.floor(Date.now() / 1000));
+
+const safeJson = <T,>(v: any, fallback: T): T => {
+  try {
+    if (v == null) return fallback;
+    if (typeof v === "object") return v as T;
+    if (typeof v === "string") return JSON.parse(v) as T;
+    return fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 const normalizeChainId = (id: any): string => {
   if (id === null || id === undefined) return "unknown";
   if (typeof id === "string") {
@@ -162,6 +174,7 @@ const normalizeChainId = (id: any): string => {
   if (typeof id === "number") return "0x" + id.toString(16);
   return "unknown";
 };
+
 const fmtTs = (ts: bigint) => {
   if (!ts || ts === 0n) return "—";
   const d = new Date(Number(ts) * 1000);
@@ -171,6 +184,27 @@ const fmtTs = (ts: bigint) => {
 const isValidEthereumAddress = (addr: string): addr is Address => {
   const trimmed = addr.trim();
   return /^0x[a-fA-F0-9]{40}$/i.test(trimmed);
+};
+
+// ===== escrow id helpers (for Supabase ids like "97:0x...") =====
+const splitEscrowId = (idOrAddr: string) => {
+  const s = String(idOrAddr || "").trim();
+  if (s.includes(":")) {
+    const [chainStr, addr] = s.split(":");
+    const chainNum = Number(chainStr);
+    return {
+      chainId: Number.isFinite(chainNum) ? chainNum : null,
+      addr: addr?.trim() || "",
+    };
+  }
+  return { chainId: null, addr: s };
+};
+
+const chainBadgeLabel = (cid: number | null) => {
+  if (cid === 97) return "BNB";
+  if (cid === 84532) return "BASE";
+  if (cid == null) return "—";
+  return `Chain ${cid}`;
 };
 
 const normalizeAndValidateCid = (input: string): string | null => {
@@ -449,14 +483,14 @@ export default function App() {
 
         // Client escrows
         const { data: clientData, error: clientError } = await supabase
-          .from("escrows")
-          .select("id, data")
+          .from("escrows_public")
+          .select("id, data, updated_at, chain_id, escrow_address")
           .ilike("data->>client", lowerAddress);
 
         // Freelancer escrows
         const { data: freelancerData, error: freelancerError } = await supabase
-          .from("escrows")
-          .select("id, data")
+          .from("escrows_public")
+          .select("id, data, updated_at, chain_id, escrow_address")
           .ilike("data->>freelancer", lowerAddress);
 
         if (clientError && freelancerError)
@@ -474,18 +508,27 @@ export default function App() {
         const data = Array.from(uniqueMap.values());
 
         // Sort by updated_at
-        data.sort(
-          (a: any, b: any) =>
-            new Date(b.data.updated_at || 0).getTime() -
-            new Date(a.data.updated_at || 0).getTime(),
-        );
+        data.sort((a: any, b: any) => {
+          const bt = new Date(b.updated_at || b.created_at || 0).getTime();
+          const at = new Date(a.updated_at || a.created_at || 0).getTime();
+          return bt - at;
+        });
 
-        const escrows = data.map((row: any) => ({
-          escrow: row.id,
-          ...row.data,
-          isActive: !row.data.completed,
-          stateLabel: STATE_LABEL[row.data.state || 0] || "Unknown",
-        }));
+        const escrows = data.map((row: any) => {
+          const { chainId: cid, addr } = splitEscrowId(row.id);
+          const d = safeJson<any>(row.data, {});
+          const st = Number(d.state ?? 0);
+
+          return {
+            escrow: row.id, // keep full id for uniqueness
+            escrowAddr: addr, // pure 0x address for UI + loading
+            chainId: cid, // number (97 / 84532)
+            chainLabel: chainBadgeLabel(cid),
+            ...d,
+            isActive: !d.completed,
+            stateLabel: STATE_LABEL[st] || "Unknown",
+          };
+        });
 
         setMyEscrows(escrows);
         console.log("Loaded", escrows.length, "escrows from Supabase");
@@ -1094,14 +1137,14 @@ export default function App() {
 
           // Client escrows
           const { data: clientData } = await supabase
-            .from("escrows")
-            .select("id, data")
+            .from("escrows_public")
+            .select("id, data, updated_at, chain_id, escrow_address")
             .ilike("data->>client", lowerAddress);
 
           // Freelancer escrows
           const { data: freelancerData } = await supabase
-            .from("escrows")
-            .select("id, data")
+            .from("escrows_public")
+            .select("id, data, updated_at, chain_id, escrow_address")
             .ilike("data->>freelancer", lowerAddress);
 
           const combined = [...(clientData || []), ...(freelancerData || [])];
@@ -1111,18 +1154,27 @@ export default function App() {
           const data = Array.from(uniqueMap.values());
 
           // Sort newest first
-          data.sort(
-            (a: any, b: any) =>
-              new Date(b.data.updated_at || 0).getTime() -
-              new Date(a.data.updated_at || 0).getTime(),
-          );
+          data.sort((a: any, b: any) => {
+            const bt = new Date(b.updated_at || b.created_at || 0).getTime();
+            const at = new Date(a.updated_at || a.created_at || 0).getTime();
+            return bt - at;
+          });
 
-          const escrows = data.map((row: any) => ({
-            escrow: row.id,
-            ...row.data,
-            isActive: !row.data.completed,
-            stateLabel: STATE_LABEL[row.data.state || 0] || "Unknown",
-          }));
+          const escrows = data.map((row: any) => {
+            const { chainId: cid, addr } = splitEscrowId(row.id);
+            const d = safeJson<any>(row.data, {});
+            const st = Number(d.state ?? 0);
+
+            return {
+              escrow: row.id,
+              escrowAddr: addr,
+              chainId: cid,
+              chainLabel: chainBadgeLabel(cid),
+              ...d,
+              isActive: !d.completed,
+              stateLabel: STATE_LABEL[st] || "Unknown",
+            };
+          });
 
           setMyEscrows(escrows);
         } catch (err: any) {
@@ -2438,6 +2490,7 @@ export default function App() {
                         completionDeadline: {fmtTs(completionDeadline)}
                         <br />
                         revisions: {revisions}/{MAX_REVISIONS.toString()} |
+                        disputeGrace:{" "}
                         {DISPUTE_GRACE === 0n
                           ? "—"
                           : (() => {
@@ -2722,7 +2775,7 @@ export default function App() {
                       }
                       className="
     cta
-    flex items-center justify-center gap-3 text-lg
+    flex items-center ui-btn justify-center gap-3 text-lg
     disabled:opacity-60
     disabled:cursor-not-allowed col-span-full
   "
@@ -3198,12 +3251,27 @@ export default function App() {
                     .map((e) => (
                       <div
                         key={e.escrow}
-                        onClick={() => {
-                          if (e.isActive) {
-                            setEscrow(e.escrow);
-                            setActiveTab("dashboard");
-                            toast.success("Escrow loaded!");
+                        onClick={async () => {
+                          if (!e.isActive) return;
+
+                          const addr = (e.escrowAddr || "").trim();
+                          if (!isValidEthereumAddress(addr)) {
+                            toast.error("Invalid escrow address in history");
+                            return;
                           }
+
+                          // auto-switch network based on chainId prefix
+                          if (e.chainId === 97) {
+                            setCurrentChain(bscTestnet);
+                            await ensureCurrentChain(provider);
+                          } else if (e.chainId === 84532) {
+                            setCurrentChain(baseSepolia);
+                            await ensureCurrentChain(provider);
+                          }
+
+                          setEscrow(addr as Address);
+                          setActiveTab("dashboard");
+                          toast.success("Escrow loaded!");
                         }}
                         className={`bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-4 shadow-md transition-all ${
                           e.isActive
@@ -3214,7 +3282,8 @@ export default function App() {
                         <div className="flex justify-between items-start gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="mono text-sm font-medium break-all text-gray-200">
-                              {e.escrow.slice(0, 8)}...{e.escrow.slice(-6)}
+                              {(e.escrowAddr || e.escrow).slice(0, 8)}...
+                              {(e.escrowAddr || e.escrow).slice(-6)}
                             </div>
                             <div className="text-xs text-gray-400 mt-1">
                               Client: {e.client?.slice(0, 6)}...
@@ -3224,15 +3293,35 @@ export default function App() {
                             </div>
                           </div>
 
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-bold ${
-                              e.isActive
-                                ? "bg-green-600/80 text-green-100"
-                                : "bg-gray-600 text-gray-300"
-                            }`}
-                          >
-                            {e.stateLabel}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {/* Chain Badge */}
+                            <span
+                              className={`px-2 py-1 rounded-md text-xs font-bold ${
+                                e.chainId === 97
+                                  ? "bg- text-yellow-600"
+                                  : e.chainId === 84532
+                                    ? "bg- text-blue-600"
+                                    : "bg-gray-600 text-gray-300"
+                              }`}
+                            >
+                              {e.chainId === 97
+                                ? "BNB"
+                                : e.chainId === 84532
+                                  ? "BASE"
+                                  : "?"}
+                            </span>
+
+                            {/* State Badge */}
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                e.isActive
+                                  ? "bg-blue-900/30 text-white"
+                                  : "bg-gray-600 text-gray-300"
+                              }`}
+                            >
+                              {e.stateLabel}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -3322,7 +3411,7 @@ export default function App() {
           </a>
 
           <a
-            href="https://github.com/shihtzu299/afrilanceFrontend-Test"
+            href="https://github.com/shihtzu299"
             target="_blank"
             rel="noopener noreferrer"
             className="text-gray-300 hover:text-white transition"
