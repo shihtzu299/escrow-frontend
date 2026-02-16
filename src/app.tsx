@@ -2153,9 +2153,9 @@ export default function App() {
                 AfriLance Escrow
               </h1>
               <p className="text-gray-400 text-base sm:text-lg mb-10 max-w-lg mx-auto leading-snug px-4">
-                Decentralized escrow for freelance payments on BNB Testnet/Base
-                Sepolia using stablecoins (USDT/USDC). Client and freelancer set
-                their terms and enforce them securely.
+                Decentralized escrow for freelance payments on Base/BNB Chain
+                using stablecoins (USDT/USDC). Client and freelancer set
+                terms and enforce them securely on-chain.
               </p>
               <button
                 onClick={connect}
