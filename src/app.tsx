@@ -54,7 +54,7 @@ const CHAIN_CONFIG = {
     factory: FACTORY,
     usdt: USDT,
     usdc: USDC,
-    oracle: ORACLE_ADDRESS, // Centralized on BNB for now
+    oracle: ORACLE_ADDRESS, // Multisig safe on BNB for now
     rpc: RPC || "https://bsc-testnet-rpc.publicnode.com",
     explorerTx: (hash: string) => `https://testnet.bscscan.com/tx/${hash}`,
     explorerAddr: (addr: string) =>
@@ -63,7 +63,7 @@ const CHAIN_CONFIG = {
   [84532]: {
     // Base Sepolia (Chain ID 84532)
     chainName: "Base Sepolia",
-    factory: getAddress("0xf4cf3C25F45Aa66cD7130a98788c907d44855761"),
+    factory: getAddress("0x672C637dB6a81cD9f8d9E1e87f85218D1C52F6ff"),
     usdt: "0xa08C5B0A5F8Daf0E5231cC7EbEF4fD3A65C3D2C5",
     usdc: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     oracle: getAddress("0x0F7fC5E6482f096380db6158f978167b57388deE"), // UMA OO V3 on Base Sepolia
@@ -289,6 +289,8 @@ export default function App() {
   const [pendingProposeSide, setPendingProposeSide] = useState<
     "freelancer" | "client" | null
   >(null);
+  const [assertionDisputed, setAssertionDisputed] = useState<boolean>(false);
+  const [disputeAsserter, setDisputeAsserter] = useState<Address>();
 
   const [umaCountdown, setUmaCountdown] = useState<string>("—");
 
@@ -313,8 +315,10 @@ export default function App() {
     | "createEscrow"
     | "proposeResolution"
     | "finalizeDispute"
+    | "disputeAssertion"
     | null
   >(null);
+  const [nowTs, setNowTs] = useState(() => Math.floor(Date.now() / 1000));
 
   const [headerHidden, setHeaderHidden] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -384,6 +388,8 @@ export default function App() {
       "0x0000000000000000000000000000000000000000000000000000000000000000",
     );
     setDisputeAssertionExpiration(0n);
+    setAssertionDisputed(false);
+    setDisputeAsserter(undefined);
 
     setFEE(0n);
     setEscrowBnbBalance(0n);
@@ -834,6 +840,8 @@ export default function App() {
         assertionIdFromContract,
         assertionExpirationFromContract,
         accruedFeesFromContract,
+        assertionDisputedFromContract,
+        disputeAsserterFromContract,
       ] = await Promise.all([
         pub
           .readContract({
@@ -945,7 +953,7 @@ export default function App() {
           .readContract({
             address: esc,
             abi: escrowAbi as any,
-            functionName: "proofHash", // ← Added here to read proofHash
+            functionName: "proofHash",
           })
           .catch(() => "") as Promise<string>,
         pub
@@ -965,7 +973,6 @@ export default function App() {
             () =>
               "0x0000000000000000000000000000000000000000000000000000000000000000",
           ) as Promise<`0x${string}`>,
-
         pub
           .readContract({
             address: esc,
@@ -980,6 +987,22 @@ export default function App() {
             functionName: "accruedFees",
           })
           .catch(() => 0n) as Promise<bigint>,
+        pub
+          .readContract({
+            address: esc,
+            abi: escrowAbi as any,
+            functionName: "assertionDisputed",
+          })
+          .catch(() => false) as Promise<boolean>,
+        pub
+          .readContract({
+            address: esc,
+            abi: escrowAbi as any,
+            functionName: "disputeAsserter",
+          })
+          .catch(
+            () => "0x0000000000000000000000000000000000000000",
+          ) as Promise<Address>,
       ]);
 
       // Connected-only wrong chain warning
@@ -1015,6 +1038,8 @@ export default function App() {
       setAccruedFees(accruedFeesFromContract);
       setDisputeAssertionId(assertionIdFromContract);
       setDisputeAssertionExpiration(assertionExpirationFromContract);
+      setAssertionDisputed(assertionDisputedFromContract);
+      setDisputeAsserter(disputeAsserterFromContract);
 
       const bal = await pub.getBalance({ address: esc }).catch(() => 0n);
       setEscrowBnbBalance(bal);
@@ -1023,7 +1048,6 @@ export default function App() {
       if (acct) {
         if (lower(acct) === lower(cAddr)) setRole("client");
         else if (lower(acct) === lower(fAddr)) setRole("freelancer");
-        else if (lower(acct) === lower(oAddr)) setRole("oracle");
         else setRole("unknown");
       } else setRole("unknown");
 
@@ -1234,8 +1258,7 @@ export default function App() {
       escrow &&
       address &&
       (lower(address) === lower(escrowClient) ||
-        lower(address) === lower(escrowFreelancer) ||
-        lower(address) === lower(escrowOracle))
+        lower(address) === lower(escrowFreelancer))
     ) {
       toast(
         (t) => (
@@ -1254,7 +1277,7 @@ export default function App() {
         { duration: 5000 },
       );
     }
-  }, [escrow, escrowClient, escrowFreelancer, escrowOracle, address]);
+  }, [escrow, escrowClient, escrowFreelancer, address]);
 
   // Auto-expand sections when relevant (power user UX)
   useEffect(() => {
@@ -1283,6 +1306,13 @@ export default function App() {
     setShowTimeline(false);
     setShowPaymentInfo(false);
   }, [escrow]);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setNowTs(Math.floor(Date.now() / 1000));
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
 
   // ===== FINAL: Create New Escrow + Auto-Detect & Load =====
 
@@ -1725,6 +1755,34 @@ export default function App() {
     disputeAssertionId ===
     "0x0000000000000000000000000000000000000000000000000000000000000000";
 
+  const isUmaAssertionExpired = useMemo(() => {
+    if (!disputeAssertionExpiration || disputeAssertionExpiration === 0n)
+      return false;
+    return now() >= disputeAssertionExpiration;
+  }, [disputeAssertionExpiration]);
+
+  const canDisputeUmaAssertionNow = useMemo(() => {
+    if (emptyAssertion) return false;
+    if (isUmaAssertionExpired) return false;
+    if (assertionDisputed) return false;
+
+    // only client/freelancer should see it
+    if (role !== "client" && role !== "freelancer") return false;
+
+    // must know both addresses
+    if (!address || !disputeAsserter) return false;
+
+    // show ONLY to the other party (not the asserter)
+    return lower(address) !== lower(disputeAsserter);
+  }, [
+    emptyAssertion,
+    isUmaAssertionExpired,
+    assertionDisputed,
+    role,
+    address,
+    disputeAsserter,
+  ]);
+
   // ===== Dispute grace gating (prevents early propose reverts) =====
   const graceEndsAt = useMemo(() => {
     if (disputeStart === 0n || DISPUTE_GRACE === 0n) return 0n;
@@ -1737,16 +1795,27 @@ export default function App() {
   }, [graceEndsAt]);
 
   const graceCountdown = useMemo(() => {
-    if (graceEndsAt === 0n) return "—";
-    const t = now();
-    if (t >= graceEndsAt) return "Grace elapsed ✅";
+  if (graceEndsAt === 0n) return "—";
 
-    const left = graceEndsAt - t;
-    const totalMins = Number(left / 60n);
-    const hrs = Math.floor(totalMins / 60);
-    const mins = totalMins % 60;
-    return `${hrs}h ${mins}m left`;
-  }, [graceEndsAt, disputeStart, DISPUTE_GRACE, escrowState]);
+  const t = BigInt(nowTs); // ✅ ticking source
+  if (t >= graceEndsAt) return "Grace elapsed ✅";
+
+  const left = graceEndsAt - t;
+  const secs = Number(left);
+
+  const hrs = Math.floor(secs / 3600);
+  const mins = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+
+  return `${hrs}h ${mins}m ${s}s left`;
+}, [graceEndsAt, nowTs]);
+
+  const graceActive =
+  graceEndsAt > 0n && BigInt(nowTs) < graceEndsAt;
+
+const hasAssertion =
+  disputeAssertionId !==
+  "0x0000000000000000000000000000000000000000000000000000000000000000";
 
   const proposeUmaResolution = async (freelancerWins: boolean) => {
     try {
@@ -1791,6 +1860,53 @@ export default function App() {
     } finally {
       // ✅ always clear after tx finishes or fails
       setPendingProposeSide(null);
+    }
+  };
+
+  const disputeUmaAssertion = async () => {
+    try {
+      if (!wallet || !address || !escrow)
+        throw new Error("Connect wallet and set escrow");
+      if (escrowState !== 5) throw new Error("Escrow is not in Disputed state");
+      if (!isBaseSepolia) throw new Error("Counter is only on Base (UMA)");
+      if (emptyAssertion) throw new Error("No UMA assertion to dispute yet");
+
+      // don’t allow disputing after expiry (UX guard)
+      if (
+        disputeAssertionExpiration > 0n &&
+        now() >= disputeAssertionExpiration
+      ) {
+        toast.error("Assertion already expired. Finalize instead.");
+        return;
+      }
+
+      // optional: prevent spamming if already disputed
+      if (assertionDisputed) {
+        toast.error("Assertion already disputed.");
+        return;
+      }
+
+      await ensureCurrentChain(provider);
+
+      await withPending("disputeAssertion", async () => {
+        const hash = await wallet.writeContract({
+          address: escrow!,
+          abi: escrowAbi as any,
+          functionName: "disputeUmaAssertion",
+          args: [],
+          account: address,
+        });
+
+        setStatus(`Disputed UMA assertion: ${hash} (${explorerTx(hash)})`);
+
+        await new Promise((r) => setTimeout(r, 1200));
+        await refreshRoleAndState(escrow!, address!);
+      });
+    } catch (e: any) {
+      const msg =
+        e?.shortMessage || e?.message || e?.toString() || "Unknown error";
+      setStatus(`Counter failed: ${msg}`);
+      toast.error(msg);
     }
   };
 
@@ -1989,7 +2105,20 @@ export default function App() {
       if (escrowState === 2)
         return "Review proof → Approve or Request Revision (or Raise Dispute)";
       if (escrowState === 4) return "Wait for freelancer to resubmit proof";
-      if (escrowState === 5) return "Disputed: wait for oracle to settle";
+      if (escrowState === 5) {
+        if (currentChain.id === 84532) {
+          if (emptyAssertion)
+            return canProposeNow
+              ? "Disputed: propose a UMA resolution"
+              : "Disputed: wait for grace period to end";
+          if (!isUmaAssertionExpired)
+            return assertionDisputed
+              ? "UMA disputed: wait for resolution flow"
+              : "UMA liveness: you can dispute the assertion";
+          return "UMA expired: finalize/settle now";
+        }
+        return "Disputed: wait for oracle to settle";
+      }
     }
     if (role === "freelancer") {
       if (escrowState === 0) {
@@ -2001,13 +2130,21 @@ export default function App() {
         return "Work in progress — Submit Proof before deadline";
       if (escrowState === 2) return "Wait for client’s decision";
       if (escrowState === 4) return "Revision requested — Submit Proof again";
-      if (escrowState === 5) return "Disputed: wait for oracle to settle";
+      if (escrowState === 5) {
+        if (currentChain.id === 84532) {
+          if (emptyAssertion)
+            return canProposeNow
+              ? "Disputed: propose a UMA resolution"
+              : "Disputed: wait for grace period to end";
+          if (!isUmaAssertionExpired)
+            return assertionDisputed
+              ? "UMA disputed: wait for resolution flow"
+              : "UMA liveness: you can dispute the assertion";
+          return "UMA expired: finalize/settle now";
+        }
+        return "Disputed: wait for oracle to settle";
+      }
     }
-    if (role === "oracle") {
-      if (escrowState === 5) return "After grace period, press a Settle button";
-      return "No action for oracle";
-    }
-    return "You are not assigned to this escrow";
   })();
 
   const startJobPrompt = async () => {
@@ -2154,8 +2291,8 @@ export default function App() {
               </h1>
               <p className="text-gray-400 text-base sm:text-lg mb-10 max-w-lg mx-auto leading-snug px-4">
                 Decentralized escrow for freelance payments on Base/BNB Chain
-                using stablecoins (USDT/USDC). Client and freelancer set
-                terms and enforce them securely on-chain.
+                using stablecoins (USDT/USDC). Client and freelancer set terms
+                and enforce them securely on-chain.
               </p>
               <button
                 onClick={connect}
@@ -2189,11 +2326,9 @@ export default function App() {
                               ? "bg-blue-600/70 text-blue-100"
                               : role === "freelancer"
                                 ? "bg-green-600/70 text-green-100"
-                                : role === "oracle"
-                                  ? "bg-purple-600/70 text-purple-100"
-                                  : role === "unknown"
-                                    ? "bg-gray-600 text-gray-300"
-                                    : "bg-gray-700 text-gray-400"
+                                : role === "unknown"
+                                  ? "bg-gray-600 text-gray-300"
+                                  : "bg-gray-700 text-gray-400"
                           }`}
                         >
                           {roleLabel[role]}
@@ -2295,8 +2430,8 @@ export default function App() {
                       } else if (step.state <= 2) {
                         isFilled = state > step.state;
                       } else if (step.state === 4) {
-                        // Revised
-                        isFilled = state === 4 || (state > 4 && state !== 3);
+                        // Revised should be filled ONLY if at least one revision was requested
+                        isFilled = revisions > 0 && (state === 4 || state > 4);
                       } else if (step.state === 3) {
                         // Approved
                         isFilled =
@@ -2564,7 +2699,7 @@ export default function App() {
             </div>
 
             {/* ===== Dispute Grace (BNB + Base) ===== */}
-            {escrow && escrowState === 5 && (
+{escrow && escrowState === 5 && graceActive && (
               <div className="mt-6 bg-gray-800/60 backdrop-blur border border-red-600/30 rounded-xl p-5 shadow-lg">
                 <h4 className="sectionHeader text-lg mb-2">⏳ Dispute Grace</h4>
 
@@ -2578,7 +2713,7 @@ export default function App() {
                   </div>
                   {!canProposeNow && currentChain.id === 84532 && (
                     <div className="mt-2 text-yellow-300">
-                      ⏳ You can only propose after the grace period ends
+                      You can only propose after the grace period ends
                       (prevents early revert).
                     </div>
                   )}
@@ -2587,7 +2722,8 @@ export default function App() {
             )}
 
             {/* ===== UMA Dispute Panel (Base only) ===== */}
-            {escrow && escrowState === 5 && currentChain.id === 84532 && (
+            {/* ===== UMA Dispute Panel (Base only) ===== */}
+{escrow && escrowState === 5 && currentChain.id === 84532 && !graceActive && (
               <div className="mt-6 bg-gray-800/60 backdrop-blur border border-yellow-600/40 rounded-xl p-6 shadow-lg">
                 <h4 className="sectionHeader text-lg mb-2">⚖️ Dispute (UMA)</h4>
 
@@ -2598,6 +2734,15 @@ export default function App() {
                     "0x0000000000000000000000000000000000000000000000000000000000000000"
                       ? "— (not proposed yet)"
                       : `${disputeAssertionId.slice(0, 10)}...${disputeAssertionId.slice(-8)}`}
+                  </div>
+
+                  <div className="mt-1">
+                    <b>Proposed by:</b>{" "}
+                    {!disputeAsserter ||
+                    disputeAsserter ===
+                      "0x0000000000000000000000000000000000000000"
+                      ? "—"
+                      : `${disputeAsserter.slice(0, 6)}...${disputeAsserter.slice(-4)}`}
                   </div>
 
                   <div className="mt-1">
@@ -2615,6 +2760,25 @@ export default function App() {
                     </div>
                   )}
                 </div>
+
+                {!emptyAssertion && (
+                  <div className="mt-2">
+                    <b>UMA Status:</b>{" "}
+                    {isUmaAssertionExpired ? (
+                      <span className="text-green-300 font-semibold">
+                        Expired ✅
+                      </span>
+                    ) : assertionDisputed ? (
+                      <span className="text-red-300 font-semibold">
+                        Disputed ⚠️
+                      </span>
+                    ) : (
+                      <span className="text-yellow-300 font-semibold">
+                        Active ⏳
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 <div className="mt-4 flex flex-col gap-3">
                   {/* Propose (only if not proposed yet) */}
@@ -2692,17 +2856,35 @@ export default function App() {
                     </>
                   )}
 
-                  {/* Finalize (only if proposed already) */}
-                  {disputeAssertionId !==
-                    "0x0000000000000000000000000000000000000000000000000000000000000000" && (
+                  {/* If assertion exists and NOT expired → allow counter/dispute */}
+                  {canDisputeUmaAssertionNow && (
+                    <button
+                      onClick={disputeUmaAssertion}
+                      disabled={pendingAction !== null || assertionDisputed}
+                      className="uma-btn"
+                      title={
+                        assertionDisputed
+                          ? "Already disputed"
+                          : "Dispute the current assertion during liveness"
+                      }
+                    >
+                      {pendingAction === "disputeAssertion" ? (
+                        <>
+                          <FaSyncAlt className="animate-spin" /> Disputing...
+                        </>
+                      ) : assertionDisputed ? (
+                        <>⚠️ Assertion already disputed</>
+                      ) : (
+                        <>⚔️ Dispute Assertion</>
+                      )}
+                    </button>
+                  )}
+
+                  {/* If expired → allow finalize */}
+                  {!emptyAssertion && isUmaAssertionExpired && (
                     <button
                       onClick={finalizeUmaDispute}
-                      disabled={
-                        pendingAction !== null ||
-                        (disputeAssertionExpiration > 0n &&
-                          BigInt(Math.floor(Date.now() / 1000)) <
-                            disputeAssertionExpiration)
-                      }
+                      disabled={pendingAction !== null}
                       className="uma-btn uma-btn-finalize"
                     >
                       {pendingAction === "finalizeDispute" ? (
@@ -3206,8 +3388,8 @@ export default function App() {
 
             {role === "unknown" && escrow && (
               <div className="hint">
-                You are not the client, freelancer, or oracle for this escrow.
-                Actions are hidden.
+                You are not the client, or freelancer for this escrow. Actions
+                are hidden.
               </div>
             )}
 
