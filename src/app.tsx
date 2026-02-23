@@ -710,7 +710,11 @@ export default function App() {
 
   // Funding phase conditions
   const isDepositDeadlineExceeded =
-    escrowState === 0 && depositDeadline > 0n && now() > depositDeadline;
+    escrowState === 0 &&
+    depositDeadline > 0n &&
+    now() > depositDeadline &&
+    !clientHasDeposit; // ✅ only blocks actions if funding never happened
+
   const isStartDeadlineExceeded =
     escrowState === 0 &&
     startDeadline > 0n &&
@@ -1795,27 +1799,26 @@ export default function App() {
   }, [graceEndsAt]);
 
   const graceCountdown = useMemo(() => {
-  if (graceEndsAt === 0n) return "—";
+    if (graceEndsAt === 0n) return "—";
 
-  const t = BigInt(nowTs); // ✅ ticking source
-  if (t >= graceEndsAt) return "Grace elapsed ✅";
+    const t = BigInt(nowTs); // ✅ ticking source
+    if (t >= graceEndsAt) return "Grace elapsed ✅";
 
-  const left = graceEndsAt - t;
-  const secs = Number(left);
+    const left = graceEndsAt - t;
+    const secs = Number(left);
 
-  const hrs = Math.floor(secs / 3600);
-  const mins = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
+    const hrs = Math.floor(secs / 3600);
+    const mins = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
 
-  return `${hrs}h ${mins}m ${s}s left`;
-}, [graceEndsAt, nowTs]);
+    return `${hrs}h ${mins}m ${s}s left`;
+  }, [graceEndsAt, nowTs]);
 
-  const graceActive =
-  graceEndsAt > 0n && BigInt(nowTs) < graceEndsAt;
+  const graceActive = graceEndsAt > 0n && BigInt(nowTs) < graceEndsAt;
 
-const hasAssertion =
-  disputeAssertionId !==
-  "0x0000000000000000000000000000000000000000000000000000000000000000";
+  const hasAssertion =
+    disputeAssertionId !==
+    "0x0000000000000000000000000000000000000000000000000000000000000000";
 
   const proposeUmaResolution = async (freelancerWins: boolean) => {
     try {
@@ -2083,11 +2086,14 @@ const hasAssertion =
 
     // Expired funding cases (only in state 0)
     if (escrowState === 0) {
-      if (now() > depositDeadline) {
-        return "Deposit deadline exceeded. Escrow inactive — no actions possible.";
-      }
+      // ✅ If funded + fee paid, refund should be allowed after startDeadline
       if (now() > startDeadline && clientHasDeposit && clientPaidFee) {
         return "Start deadline exceeded. Client can refund deposited funds.";
+      }
+
+      // ✅ Only show inactive if funding never happened
+      if (now() > depositDeadline && !clientHasDeposit) {
+        return "Deposit deadline exceeded. Escrow inactive — no actions possible.";
       }
     }
 
@@ -2699,7 +2705,7 @@ const hasAssertion =
             </div>
 
             {/* ===== Dispute Grace (BNB + Base) ===== */}
-{escrow && escrowState === 5 && graceActive && (
+            {escrow && escrowState === 5 && graceActive && (
               <div className="mt-6 bg-gray-800/60 backdrop-blur border border-red-600/30 rounded-xl p-5 shadow-lg">
                 <h4 className="sectionHeader text-lg mb-2">⏳ Dispute Grace</h4>
 
@@ -2713,8 +2719,8 @@ const hasAssertion =
                   </div>
                   {!canProposeNow && currentChain.id === 84532 && (
                     <div className="mt-2 text-yellow-300">
-                      You can only propose after the grace period ends
-                      (prevents early revert).
+                      You can only propose after the grace period ends (prevents
+                      early revert).
                     </div>
                   )}
                 </div>
@@ -2723,187 +2729,192 @@ const hasAssertion =
 
             {/* ===== UMA Dispute Panel (Base only) ===== */}
             {/* ===== UMA Dispute Panel (Base only) ===== */}
-{escrow && escrowState === 5 && currentChain.id === 84532 && !graceActive && (
-              <div className="mt-6 bg-gray-800/60 backdrop-blur border border-yellow-600/40 rounded-xl p-6 shadow-lg">
-                <h4 className="sectionHeader text-lg mb-2">⚖️ Dispute (UMA)</h4>
+            {escrow &&
+              escrowState === 5 &&
+              currentChain.id === 84532 &&
+              !graceActive && (
+                <div className="mt-6 bg-gray-800/60 backdrop-blur border border-yellow-600/40 rounded-xl p-6 shadow-lg">
+                  <h4 className="sectionHeader text-lg mb-2">
+                    ⚖️ Dispute (UMA)
+                  </h4>
 
-                <div className="text-sm text-gray-300 leading-relaxed">
-                  <div>
-                    <b>Assertion ID:</b>{" "}
-                    {disputeAssertionId ===
-                    "0x0000000000000000000000000000000000000000000000000000000000000000"
-                      ? "— (not proposed yet)"
-                      : `${disputeAssertionId.slice(0, 10)}...${disputeAssertionId.slice(-8)}`}
-                  </div>
-
-                  <div className="mt-1">
-                    <b>Proposed by:</b>{" "}
-                    {!disputeAsserter ||
-                    disputeAsserter ===
-                      "0x0000000000000000000000000000000000000000"
-                      ? "—"
-                      : `${disputeAsserter.slice(0, 6)}...${disputeAsserter.slice(-4)}`}
-                  </div>
-
-                  <div className="mt-1">
-                    <b>Expiration:</b>{" "}
-                    {disputeAssertionExpiration === 0n
-                      ? "—"
-                      : new Date(
-                          Number(disputeAssertionExpiration) * 1000,
-                        ).toLocaleString()}
-                  </div>
-
-                  {disputeAssertionExpiration > 0n && (
-                    <div className="mt-1">
-                      <b>Time left:</b> {umaCountdown}
+                  <div className="text-sm text-gray-300 leading-relaxed">
+                    <div>
+                      <b>Assertion ID:</b>{" "}
+                      {disputeAssertionId ===
+                      "0x0000000000000000000000000000000000000000000000000000000000000000"
+                        ? "— (not proposed yet)"
+                        : `${disputeAssertionId.slice(0, 10)}...${disputeAssertionId.slice(-8)}`}
                     </div>
-                  )}
-                </div>
 
-                {!emptyAssertion && (
-                  <div className="mt-2">
-                    <b>UMA Status:</b>{" "}
-                    {isUmaAssertionExpired ? (
-                      <span className="text-green-300 font-semibold">
-                        Expired ✅
-                      </span>
-                    ) : assertionDisputed ? (
-                      <span className="text-red-300 font-semibold">
-                        Disputed ⚠️
-                      </span>
-                    ) : (
-                      <span className="text-yellow-300 font-semibold">
-                        Active ⏳
-                      </span>
+                    <div className="mt-1">
+                      <b>Proposed by:</b>{" "}
+                      {!disputeAsserter ||
+                      disputeAsserter ===
+                        "0x0000000000000000000000000000000000000000"
+                        ? "—"
+                        : `${disputeAsserter.slice(0, 6)}...${disputeAsserter.slice(-4)}`}
+                    </div>
+
+                    <div className="mt-1">
+                      <b>Expiration:</b>{" "}
+                      {disputeAssertionExpiration === 0n
+                        ? "—"
+                        : new Date(
+                            Number(disputeAssertionExpiration) * 1000,
+                          ).toLocaleString()}
+                    </div>
+
+                    {disputeAssertionExpiration > 0n && (
+                      <div className="mt-1">
+                        <b>Time left:</b> {umaCountdown}
+                      </div>
                     )}
                   </div>
-                )}
 
-                <div className="mt-4 flex flex-col gap-3">
-                  {/* Propose (only if not proposed yet) */}
-                  {/* === NEW: Evidence + choose winner (replaces prompt UX) === */}
-                  {emptyAssertion && (
-                    <>
-                      <div>
-                        <label className="block text-sm text-gray-400 mb-2">
-                          Evidence link (required)
-                        </label>
-
-                        <input
-                          value={umaEvidence}
-                          onChange={(e) => setUmaEvidence(e.target.value)}
-                          placeholder="Paste IPFS / Google Drive / URL"
-                          className="fullWidth text-base py-3 px-4"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button
-                          onClick={() => proposeUmaResolution(true)}
-                          disabled={
-                            pendingAction !== null ||
-                            !canProposeNow ||
-                            !umaEvidence.trim()
-                          }
-                          className="uma-btn"
-                          title={
-                            !canProposeNow
-                              ? "Wait for dispute grace period to elapse"
-                              : !umaEvidence.trim()
-                                ? "Evidence link required"
-                                : ""
-                          }
-                        >
-                          {pendingAction === "proposeResolution" &&
-                          pendingProposeSide === "freelancer" ? (
-                            <>
-                              <FaSyncAlt className="animate-spin" />{" "}
-                              Proposing...
-                            </>
-                          ) : (
-                            <>🏆 Freelancer wins</>
-                          )}
-                        </button>
-
-                        <button
-                          onClick={() => proposeUmaResolution(false)}
-                          disabled={
-                            pendingAction !== null ||
-                            !canProposeNow ||
-                            !umaEvidence.trim()
-                          }
-                          className="uma-btn"
-                          title={
-                            !canProposeNow
-                              ? "Wait for dispute grace period to elapse"
-                              : !umaEvidence.trim()
-                                ? "Evidence link required"
-                                : ""
-                          }
-                        >
-                          {pendingAction === "proposeResolution" &&
-                          pendingProposeSide === "client" ? (
-                            <>
-                              <FaSyncAlt className="animate-spin" />{" "}
-                              Proposing...
-                            </>
-                          ) : (
-                            <>🏆 Client wins</>
-                          )}
-                        </button>
-                      </div>
-                    </>
-                  )}
-
-                  {/* If assertion exists and NOT expired → allow counter/dispute */}
-                  {canDisputeUmaAssertionNow && (
-                    <button
-                      onClick={disputeUmaAssertion}
-                      disabled={pendingAction !== null || assertionDisputed}
-                      className="uma-btn"
-                      title={
-                        assertionDisputed
-                          ? "Already disputed"
-                          : "Dispute the current assertion during liveness"
-                      }
-                    >
-                      {pendingAction === "disputeAssertion" ? (
-                        <>
-                          <FaSyncAlt className="animate-spin" /> Disputing...
-                        </>
+                  {!emptyAssertion && (
+                    <div className="mt-2">
+                      <b>UMA Status:</b>{" "}
+                      {isUmaAssertionExpired ? (
+                        <span className="text-green-300 font-semibold">
+                          Expired ✅
+                        </span>
                       ) : assertionDisputed ? (
-                        <>⚠️ Assertion already disputed</>
+                        <span className="text-red-300 font-semibold">
+                          Disputed ⚠️
+                        </span>
                       ) : (
-                        <>⚔️ Dispute Assertion</>
+                        <span className="text-yellow-300 font-semibold">
+                          Active ⏳
+                        </span>
                       )}
-                    </button>
+                    </div>
                   )}
 
-                  {/* If expired → allow finalize */}
-                  {!emptyAssertion && isUmaAssertionExpired && (
-                    <button
-                      onClick={finalizeUmaDispute}
-                      disabled={pendingAction !== null}
-                      className="uma-btn uma-btn-finalize"
-                    >
-                      {pendingAction === "finalizeDispute" ? (
-                        <>
-                          <FaSyncAlt className="animate-spin" /> Finalizing...
-                        </>
-                      ) : (
-                        <>✅ Finalize / Settle</>
-                      )}
-                    </button>
-                  )}
+                  <div className="mt-4 flex flex-col gap-3">
+                    {/* Propose (only if not proposed yet) */}
+                    {/* === NEW: Evidence + choose winner (replaces prompt UX) === */}
+                    {emptyAssertion && (
+                      <>
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-2">
+                            Evidence link (required)
+                          </label>
 
-                  <div className="text-xs text-gray-400">
-                    Note: On UMA, settlement happens after the liveness timer
-                    unless someone disputes it.
+                          <input
+                            value={umaEvidence}
+                            onChange={(e) => setUmaEvidence(e.target.value)}
+                            placeholder="Paste IPFS / Google Drive / URL"
+                            className="fullWidth text-base py-3 px-4"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <button
+                            onClick={() => proposeUmaResolution(true)}
+                            disabled={
+                              pendingAction !== null ||
+                              !canProposeNow ||
+                              !umaEvidence.trim()
+                            }
+                            className="uma-btn"
+                            title={
+                              !canProposeNow
+                                ? "Wait for dispute grace period to elapse"
+                                : !umaEvidence.trim()
+                                  ? "Evidence link required"
+                                  : ""
+                            }
+                          >
+                            {pendingAction === "proposeResolution" &&
+                            pendingProposeSide === "freelancer" ? (
+                              <>
+                                <FaSyncAlt className="animate-spin" />{" "}
+                                Proposing...
+                              </>
+                            ) : (
+                              <>🏆 Freelancer wins</>
+                            )}
+                          </button>
+
+                          <button
+                            onClick={() => proposeUmaResolution(false)}
+                            disabled={
+                              pendingAction !== null ||
+                              !canProposeNow ||
+                              !umaEvidence.trim()
+                            }
+                            className="uma-btn"
+                            title={
+                              !canProposeNow
+                                ? "Wait for dispute grace period to elapse"
+                                : !umaEvidence.trim()
+                                  ? "Evidence link required"
+                                  : ""
+                            }
+                          >
+                            {pendingAction === "proposeResolution" &&
+                            pendingProposeSide === "client" ? (
+                              <>
+                                <FaSyncAlt className="animate-spin" />{" "}
+                                Proposing...
+                              </>
+                            ) : (
+                              <>🏆 Client wins</>
+                            )}
+                          </button>
+                        </div>
+                      </>
+                    )}
+
+                    {/* If assertion exists and NOT expired → allow counter/dispute */}
+                    {canDisputeUmaAssertionNow && (
+                      <button
+                        onClick={disputeUmaAssertion}
+                        disabled={pendingAction !== null || assertionDisputed}
+                        className="uma-btn"
+                        title={
+                          assertionDisputed
+                            ? "Already disputed"
+                            : "Dispute the current assertion during liveness"
+                        }
+                      >
+                        {pendingAction === "disputeAssertion" ? (
+                          <>
+                            <FaSyncAlt className="animate-spin" /> Disputing...
+                          </>
+                        ) : assertionDisputed ? (
+                          <>⚠️ Assertion already disputed</>
+                        ) : (
+                          <>⚔️ Dispute Assertion</>
+                        )}
+                      </button>
+                    )}
+
+                    {/* If expired → allow finalize */}
+                    {!emptyAssertion && isUmaAssertionExpired && (
+                      <button
+                        onClick={finalizeUmaDispute}
+                        disabled={pendingAction !== null}
+                        className="uma-btn uma-btn-finalize"
+                      >
+                        {pendingAction === "finalizeDispute" ? (
+                          <>
+                            <FaSyncAlt className="animate-spin" /> Finalizing...
+                          </>
+                        ) : (
+                          <>✅ Finalize / Settle</>
+                        )}
+                      </button>
+                    )}
+
+                    <div className="text-xs text-gray-400">
+                      Note: On UMA, settlement happens after the liveness timer
+                      unless someone disputes it.
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* NEW: Visual separation from Next Step banner */}
             {address && !escrow && (
@@ -3606,7 +3617,7 @@ const hasAssertion =
         <p className="text-gray-600 text-xs mt-4">support@afrilance.xyz</p>
 
         <p className="text-gray-600 text-xs mt-8">
-          © 2025 AfriLance - Empowering African Freelancers
+          © 2026 AfriLance - Empowering Africans
         </p>
       </footer>
     </div>
