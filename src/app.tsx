@@ -2292,13 +2292,12 @@ export default function App() {
           {!address ? (
             /* ==== DISCONNECTED STATE - unchanged ==== */
             <div className="text-center py-12 px-6">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent mb-6 leading-tight whitespace-nowrap">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent mb-4 leading-tight">
                 AfriLance Escrow
               </h1>
-              <p className="text-gray-400 text-base sm:text-lg mb-10 max-w-lg mx-auto leading-snug px-4">
-                Decentralized escrow for freelance payments on Base/BNB Chain
-                using stablecoins (USDT/USDC). Client and freelancer set terms
-                and enforce them securely on-chain.
+              <p className="text-gray-400 text-base sm:text-lg mb-8 max-w-lg mx-auto leading-snug">
+                Decentralized freelance escrow on Base/BNB using USDT/USDC with
+                secure on-chain terms.
               </p>
               <button
                 onClick={connect}
@@ -2307,12 +2306,12 @@ export default function App() {
                 <FaWallet size={22} />
                 Connect Wallet
               </button>
-              <p className="text-gray-500 text-xs mt-3 mb-0 max-w-md mx-auto text-center leading-snug px-4">
+              <p className="text-gray-500 text-xs mt-3 mb-0 max-w-md mx-auto text-center leading-snug">
                 Supports MetaMask, WalletConnect and all other wallets
               </p>
             </div>
           ) : (
-            /* ==== CONNECTED STATE - Clean, compact, modern ==== */
+            /* ==== CONNECTED STATE  ==== */
             <div className="space-y-5">
               {/* Single compact wallet card with Disconnect on the same line */}
               <div className="bg-gray-800/70 backdrop-blur border border-gray-700 rounded-2xl p-4 shadow-lg">
@@ -3617,7 +3616,7 @@ export default function App() {
         <p className="text-gray-600 text-xs mt-4">support@afrilance.xyz</p>
 
         <p className="text-gray-600 text-xs mt-8">
-          © 2026 AfriLance - Empowering Africans
+          © 2026 AfriLance - Infrastructure for the Open Economy
         </p>
       </footer>
     </div>
