@@ -1,5 +1,4 @@
 # AfriLance – Decentralized Freelance Ecosystem for Africa
-TESTNET
 
 **Empowering African talent and global clients with secure, transparent, and innovative freelance tools.**
 
@@ -9,7 +8,7 @@ AfriLance is a full-stack decentralized platform built to solve trust, payment, 
 - **Upcoming Gigs Marketplace** — AI-powered job matching, profiles, ratings, and end-to-end freelance collaboration.
 - **Blockchain foundation** — trustless, low-fee infrastructure on BNB Chain & Base.
 
-Live on Testnet: https://testnetescrow.afrilance.xyz  
+Live on Mainnet: https://testnetescrow.afrilance.xyz  
 X: [@AfriLanceHQ](https://x.com/AfriLanceHQ)  
 Telegram Community: https://t.me/AfriLanceCommunity
 Farcaster: [@AfriLanceHQ](https://farcaster.xyz/AfriLanceHQ)
@@ -18,10 +17,10 @@ Backend Repo: https://github.com/shihtzu299/escrow-backendBot
 
 ## Key Features
 
-- Multi-chain support: BNB Testnet + Base Sepolia (mainnet coming)
+- Multi-chain support: BNB Chain + Base
 - Stablecoin escrow payments (USDT/USDC) with per-escrow token locking
 - UMA OO V3 oracle for disputes (live on Base Sepolia)
-- Multisig address oracle for disputes on BNB Testnet (Chainlink keeper on Mainnet)
+- Multisig address oracle for disputes on BNB Mainnet (Chainlink keeper upgrade soon)
 - Strict IPFS proof validation (59-char CID) + in-app visibility for client/freelancer
 - Revision messages readable in-app (no Telegram dependency)
 - Supabase-powered "My Escrows" history tab
@@ -34,7 +33,7 @@ Backend Repo: https://github.com/shihtzu299/escrow-backendBot
 
 | Network         | Chain ID | Status     | Platform Fee       | Oracle              | Explorer Link                     | Factory Address                          |
 |-----------------|----------|------------|--------------------|---------------------|-----------------------------------|------------------------------------------|
-| BNB Testnet     | 97       | Live       | 0.002 BNB          | Multisig Address   | https://testnet.bscscan.com       | 0xbc389c697272B375FbE0f6917D3B4327391a74ec |
+| BNB Mainnet     | 97       | Live       | 0.002 BNB          | Multisig Address   | https://testnet.bscscan.com       | 0xbc389c697272B375FbE0f6917D3B4327391a74ec |
 | Base Sepolia    | 84532    | Live       | 0.00058 ETH        | UMA OO V3           | https://sepolia.basescan.org      | 0xf4cf3C25F45Aa66cD7130a98788c907d44855761 |
 | BNB Mainnet     | 56       | Planned    | 0.002 BNB          | Chainlink (planned) | https://bscscan.com               | [Placeholder – to be updated]      |
 | Base Mainnet    | 8453     | Planned    | 0.00058 ETH        | UMA OO V3           | https://basescan.org              | [Placeholder – to be updated]            |
@@ -73,7 +72,7 @@ Backend Repo: https://github.com/shihtzu299/escrow-backendBot
 - Audit planned before mainnet launch.
 
 **Project Vision**
-AfriLance aims to bring financial inclusion, trust, and efficiency to freelance work across Africa by replacing centralized platforms with blockchain-based escrow, AI matching, and transparent collaboration tools.
+AfriLance aims to bring financial inclusion, trust, and efficiency to freelance work across Africa by replacing centralized platforms with blockchain-based escrow, and transparent collaboration tools.
 
 **License** 
 MIT

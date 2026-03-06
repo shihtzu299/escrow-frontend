@@ -140,9 +140,9 @@ const BSC_TESTNET_PARAMS = {
   blockExplorerUrls: ["https://testnet.bscscan.com"],
 };
 
-const BASE_MAINNET_HEX = "0x2105"; // 8453 in hex
-const BASE_MAINNET_PARAMS = {
-  chainId: BASE_MAINNET_HEX,
+const BASE_TESTNET_HEX = "0x14a34"; // 84532 in hex
+const BASE_TESTNET_PARAMS = {
+  chainId: BASE_TESTNET_HEX,
   chainName: "Base Sepolia",
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: ["https://sepolia.base.org"],
@@ -233,6 +233,7 @@ export default function App() {
     typeof bscTestnet | typeof baseSepolia
   >(bscTestnet);
   const [showChainMenu, setShowChainMenu] = useState(false);
+  const [showNavMenu, setShowNavMenu] = useState(false);
   const [pub, setPub] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
   const [provider, setProvider] = useState<any>(null); // Raw provider (ethereum or WC)
@@ -331,6 +332,10 @@ export default function App() {
   const [accruedFees, setAccruedFees] = useState<bigint>(0n);
   const [activeTab, setActiveTab] = useState<"dashboard" | "myescrows">(
     "dashboard",
+  );
+  // which card to show on Dashboard
+  const [dashboardMode, setDashboardMode] = useState<"create" | "load">(
+    "create",
   );
   const [myEscrows, setMyEscrows] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -694,12 +699,18 @@ export default function App() {
   useEffect(() => {
     if (!address) {
       setActiveTab("dashboard");
+      setDashboardMode("create"); // ✅ disconnected view should be create card
       setMyEscrows([]);
       setHistoryLoading(false);
       setHistoryError(null);
       setEscrow(undefined);
     }
   }, [address]);
+
+  // If an escrow gets loaded/created, show the loader card automatically
+  useEffect(() => {
+    if (escrow) setDashboardMode("load");
+  }, [escrow]);
 
   useEffect(() => {
     if (!address) setCurrentPage(0);
@@ -1218,15 +1229,16 @@ export default function App() {
   }, [activeTab, address]);
 
   useEffect(() => {
-    if (!showChainMenu) return;
+    if (!showChainMenu && !showNavMenu) return;
 
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = () => {
       setShowChainMenu(false);
+      setShowNavMenu(false);
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showChainMenu]);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [showChainMenu, showNavMenu]);
 
   useEffect(() => {
     const walletChainId = parseInt(
@@ -1390,9 +1402,9 @@ export default function App() {
 
         if (newEscrowAddr && isValidEthereumAddress(newEscrowAddr)) {
           setEscrow(newEscrowAddr);
+          setDashboardMode("load"); // ✅ create card gives way to loader card
           setFreelancerAddr("");
           setSettlementToken(settlementToken);
-
           setStatus(
             `Success! New escrow loaded on ${cfg.chainName}: ${newEscrowAddr}`,
           );
@@ -2077,7 +2089,7 @@ export default function App() {
 
   const nextAction = (() => {
     if (!address) return "Connect your wallet";
-    if (escrowState === null) return "Load or Create an Escrow";
+    if (escrowState === null) return "Load an Escrow Address";
 
     // Completed or settled
     if (escrowState === 3 || escrowState === 6) {
@@ -2255,7 +2267,7 @@ export default function App() {
             color: "#f9fafb",
             border: "1px solid #3b82f6",
             borderRadius: "12px",
-            maxWidth: "70vw", // 🔥 mobile-safe
+            maxWidth: "70vw",
             width: "fit-content",
             margin: "0 auto",
             wordBreak: "break-word",
@@ -2280,6 +2292,55 @@ export default function App() {
         }}
       />
 
+      {/* ===== GLOBAL TOP-RIGHT NAV (outside header) ===== */}
+      <div className="globalNav">
+        {/* Desktop */}
+        <a
+          href="https://wooded-budget-e6b.notion.site/AfriLance-Documentation-Hub-v2-301cdfc6438080048655cf726ec29eac"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="globalNav__docs"
+          onClick={() => setShowNavMenu(false)}
+        >
+          Read Docs
+          <FaExternalLinkAlt className="opacity-80" size={14} />
+        </a>
+
+        <div className="globalNav__mobile">
+          <button
+            type="button"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowNavMenu((v) => !v);
+            }}
+            className="globalNav__hamburger"
+            aria-label="Open menu"
+          >
+            ☰
+          </button>
+
+          {showNavMenu && (
+            <div
+              className="globalNav__dropdown"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <a
+                href="https://wooded-budget-e6b.notion.site/AfriLance-Documentation-Hub-v2-301cdfc6438080048655cf726ec29eac"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="globalNav__item"
+                onClick={() => setShowNavMenu(false)}
+              >
+                Read Docs
+                <FaExternalLinkAlt className="opacity-80" size={14} />
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+
       <header
         className={`topBar fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ${
           headerHidden ? "-translate-y-full" : "translate-y-0"
@@ -2296,12 +2357,12 @@ export default function App() {
                 AfriLance Escrow
               </h1>
               <p className="text-gray-400 text-base sm:text-lg mb-8 max-w-lg mx-auto leading-snug">
-                Decentralized freelance escrow on Base/BNB using USDT/USDC with
-                secure on-chain terms.
+                Decentralized escrow for freelance deals on Base & BNB Chain
+                using USDC/USDT.
               </p>
               <button
                 onClick={connect}
-                className="ui-btn px-5 py-2 rounded-xl bg-red-900/60 hover:bg-red-800/80 hover:shadow-lg border border-red-800 text-red-300 font-medium transition-all flex items-center gap-2 whitespace-nowrap transform hover:scale-105"
+                className="ui-btn px-4 py-2 rounded-lg bg-gray-800/60 hover:bg-gray-700/70 border border-gray-700 text-gray-200 text-sm"
               >
                 <FaWallet size={22} />
                 Connect Wallet
@@ -2378,7 +2439,7 @@ export default function App() {
                   <div className="flex items-center gap-3">
                     {wrongNet && (
                       <button
-                        className="ui-btn switch-btn px-3 py-1.5 rounded-lg bg-red-900/50 hover:bg-red-800/70 border border-red-700 text-xs font-medium transition-all hover:scale-105 whitespace-nowrap shadow-sm"
+                        className="ui-btn px-4 py-2 rounded-lg bg-gray-800/60 hover:bg-gray-700/70 border border-gray-700 text-gray-200 text-sm"
                         onClick={() => ensureCurrentChain(provider)}
                       >
                         Switch to{" "}
@@ -2421,106 +2482,134 @@ export default function App() {
       <main className="main max-w-4xl mx-auto px-6 pb-12 ">
         {activeTab === "dashboard" ? (
           <>
-            {escrow && escrowState !== undefined && (
-              <div className="mt-8">
-                <div className="overflow-x-auto scrollbar-hide px-4 md:px-0">
-                  <div className="flex items-center justify-between gap-4 min-w-max md:min-w-0 md:gap-2">
-                    {STEPS.map((step, index) => {
-                      let isFilled = false;
+            {address &&
+              dashboardMode === "load" &&
+              escrow &&
+              escrowState !== undefined && (
+                <div className="mt-8">
+                  <div className="overflow-x-auto scrollbar-hide px-4 md:px-0">
+                    <div className="flex items-center justify-between gap-4 min-w-max md:min-w-0 md:gap-2">
+                      {STEPS.map((step, index) => {
+                        let isFilled = false;
 
-                      const state = Number(escrowState); // normalize for TS + safety
+                        const state = Number(escrowState); // normalize for TS + safety
 
-                      if (escrowState === null) {
-                        isFilled = false;
-                      } else if (step.state <= 2) {
-                        isFilled = state > step.state;
-                      } else if (step.state === 4) {
-                        // Revised should be filled ONLY if at least one revision was requested
-                        isFilled = revisions > 0 && (state === 4 || state > 4);
-                      } else if (step.state === 3) {
-                        // Approved
-                        isFilled =
-                          state === 3 ||
-                          (state > 3 && state !== 4 && state !== 5);
-                      } else if (step.state === 5) {
-                        // Disputed
-                        isFilled = state === 5 || state === 6;
-                      } else if (step.state === 6) {
-                        // Resolved
-                        isFilled = state === 6;
-                      }
+                        if (escrowState === null) {
+                          isFilled = false;
+                        } else if (step.state <= 2) {
+                          isFilled = state > step.state;
+                        } else if (step.state === 4) {
+                          // Revised should be filled ONLY if at least one revision was requested
+                          isFilled =
+                            revisions > 0 && (state === 4 || state > 4);
+                        } else if (step.state === 3) {
+                          // Approved
+                          isFilled =
+                            state === 3 ||
+                            (state > 3 && state !== 4 && state !== 5);
+                        } else if (step.state === 5) {
+                          // Disputed
+                          isFilled = state === 5 || state === 6;
+                        } else if (step.state === 6) {
+                          // Resolved
+                          isFilled = state === 6;
+                        }
 
-                      return (
-                        <div
-                          key={step.state}
-                          className="relative flex flex-col items-center flex-1 md:flex-initial"
-                        >
+                        return (
                           <div
-                            className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all shadow-md ${
-                              escrowState === step.state
-                                ? "bg-green-500 text-white shadow-green-500/60"
-                                : isFilled
-                                  ? "bg-green-600/80 text-white"
-                                  : "bg-gray-700 text-gray-400"
-                            }`}
+                            key={step.state}
+                            className="relative flex flex-col items-center flex-1 md:flex-initial"
                           >
-                            {isFilled ? <FaCheckCircle size={20} /> : index + 1}
-                          </div>
-
-                          <p className="mt-2 text-xs text-center text-gray-300 leading-tight">
-                            {step.label}
-                          </p>
-
-                          {index < STEPS.length - 1 && (
                             <div
-                              className={`absolute top-6 left-12 right-0 h-0.5 -z-10 transition-all ${
-                                isFilled ? "bg-green-500" : "bg-gray-700"
+                              className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all shadow-md ${
+                                escrowState === step.state
+                                  ? "bg-green-500 text-white shadow-green-500/60"
+                                  : isFilled
+                                    ? "bg-green-600/80 text-white"
+                                    : "bg-gray-700 text-gray-400"
                               }`}
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
+                            >
+                              {isFilled ? (
+                                <FaCheckCircle size={20} />
+                              ) : (
+                                index + 1
+                              )}
+                            </div>
+
+                            <p className="mt-2 text-xs text-center text-gray-300 leading-tight">
+                              {step.label}
+                            </p>
+
+                            {index < STEPS.length - 1 && (
+                              <div
+                                className={`absolute top-6 left-12 right-0 h-0.5 -z-10 transition-all ${
+                                  isFilled ? "bg-green-500" : "bg-gray-700"
+                                }`}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
+              )}
+
+            {/* ===== Dashboard Mode Switch (button above the card) ===== */}
+            {address && !escrow && (
+              <div className="flex justify-end mt-6 mb-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDashboardMode(
+                      dashboardMode === "create" ? "load" : "create",
+                    )
+                  }
+                  className="ui-btn px-4 py-2 rounded-lg bg-gray-800/60 hover:bg-gray-700/80 border border-gray-700 text-sm text-gray-200 transition-all"
+                >
+                  {dashboardMode === "create"
+                    ? "Load Escrow"
+                    : "Create New Escrow"}
+                </button>
               </div>
             )}
 
-            <div className="formGroup bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg mb-8">
-              <div className="flex gap-3 items-end">
-                <div className="flex-1">
-                  <label
-                    htmlFor="escrowAddress"
-                    className="block text-sm text-gray-400 mb-2"
-                  >
-                    Escrow Address
-                  </label>
-                  <input
-                    id="escrowAddress"
-                    placeholder="0x..."
-                    value={escrow || ""}
-                    onChange={(e) => handleEscrowChange(e.target.value)}
-                    className="fullWidth text-base py-3 px-4"
-                  />
+            {address && dashboardMode === "load" && (
+              <div className="formGroup bg-gray-800/60 backdrop-blur border border-gray-700 rounded-xl p-6 shadow-lg mb-8">
+                <div className="flex gap-3 items-end">
+                  <div className="flex-1">
+                    <label
+                      htmlFor="escrowAddress"
+                      className="block text-sm text-gray-400 mb-2"
+                    >
+                      Escrow Address
+                    </label>
+                    <input
+                      id="escrowAddress"
+                      placeholder="0x..."
+                      value={escrow || ""}
+                      onChange={(e) => handleEscrowChange(e.target.value)}
+                      className="fullWidth text-base py-3 px-4"
+                    />
+                  </div>
+                  {escrow && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(escrow);
+                        toast.success("Escrow address copied!");
+                      }}
+                      className="ui-btn px-6 py-3 bg-gray-700 hover:bg-gray-600 hover:shadow-md rounded-lg flex items-center gap-2 whitespace-nowrap transition-all transform hover:scale-105"
+                    >
+                      <FaCopy size={18} />
+                      Copy
+                    </button>
+                  )}
                 </div>
-                {escrow && (
+                <div className="buttonGroup mt-4">
                   <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(escrow);
-                      toast.success("Escrow address copied!");
-                    }}
-                    className="ui-btn px-6 py-3 bg-gray-700 hover:bg-gray-600 hover:shadow-md rounded-lg flex items-center gap-2 whitespace-nowrap transition-all transform hover:scale-105"
-                  >
-                    <FaCopy size={18} />
-                    Copy
-                  </button>
-                )}
-              </div>
-              <div className="buttonGroup mt-4">
-                <button
-                  disabled={refreshing}
-                  onClick={readStateAll}
-                  className="
+                    disabled={refreshing}
+                    onClick={readStateAll}
+                    className="
     ui-btn refresh-btn flex items-center gap-2 px-4 py-2
     bg-gray-700 hover:bg-gray-600
     hover:shadow-md
@@ -2530,16 +2619,17 @@ export default function App() {
     disabled:opacity-50
     disabled:cursor-not-allowed
   "
-                >
-                  <FaSyncAlt
-                    size={18}
-                    className={refreshing ? "animate-spin" : ""}
-                  />
+                  >
+                    <FaSyncAlt
+                      size={18}
+                      className={refreshing ? "animate-spin" : ""}
+                    />
 
-                  {refreshing ? "Refreshing..." : "Refresh Status"}
-                </button>
+                    {refreshing ? "Refreshing..." : "Refresh Status"}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* ===== Collapsible Info Panels ===== */}
             {panelShouldShow && (
@@ -2679,8 +2769,9 @@ export default function App() {
               </div>
             )}
 
-            <div
-              className={`nextStepCard mt-4 p-4 rounded-xl border text-sm sm:text-base transition-all
+            {address && dashboardMode === "load" && (
+              <div
+                className={`nextStepCard mt-4 p-4 rounded-xl border text-sm sm:text-base transition-all
     ${
       escrowState === 0
         ? "border-blue-500/50 bg-blue-900/20 text-blue-200"
@@ -2695,13 +2786,14 @@ export default function App() {
                 : "border-gray-600 bg-gray-800/50 text-gray-300"
     }
   `}
-            >
-              <div className="flex items-center gap-2 font-semibold mb-1">
-                🧭 <span>Next Step</span>
-              </div>
+              >
+                <div className="flex items-center gap-2 font-semibold mb-1">
+                  🧭 <span>Next Step</span>
+                </div>
 
-              <div>{nextAction}</div>
-            </div>
+                <div>{nextAction}</div>
+              </div>
+            )}
 
             {/* ===== Dispute Grace (BNB + Base) ===== */}
             {escrow && escrowState === 5 && graceActive && (
@@ -2915,8 +3007,7 @@ export default function App() {
                 </div>
               )}
 
-            {/* NEW: Visual separation from Next Step banner */}
-            {address && !escrow && (
+            {dashboardMode === "create" && !escrow && (
               <>
                 <div className="nextStepToCreateSpacer" />
 
@@ -3616,7 +3707,7 @@ export default function App() {
         <p className="text-gray-600 text-xs mt-4">support@afrilance.xyz</p>
 
         <p className="text-gray-600 text-xs mt-8">
-          © 2026 AfriLance - Infrastructure for the Open Economy
+          © 2026 AfriLance — Work. Paid. Anywhere.
         </p>
       </footer>
     </div>
