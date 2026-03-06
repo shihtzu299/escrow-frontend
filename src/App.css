@@ -822,8 +822,13 @@ footer a:hover {
 
 .globalNav {
   position: fixed;
+<<<<<<< HEAD
   top: 30px; /* moved down slightly */
   right: 30px; /* tiny adjustment */
+=======
+  top: 12px;
+  right: 14px;
+>>>>>>> 47866e61d960ee2f1eb99f001df7b23bb44696cf
   z-index: 99999;
   display: flex;
   align-items: center;
@@ -845,9 +850,13 @@ footer a:hover {
   text-decoration: none;
   font-size: 15px;
   font-weight: 700;
+<<<<<<< HEAD
   transition:
     color 150ms ease,
     transform 150ms ease;
+=======
+  transition: color 150ms ease, transform 150ms ease;
+>>>>>>> 47866e61d960ee2f1eb99f001df7b23bb44696cf
 }
 
 .globalNav__docs:hover {
@@ -882,9 +891,13 @@ footer a:hover {
 
   color: #e5e7eb;
   font-size: 18px;
+<<<<<<< HEAD
   transition:
     color 150ms ease,
     transform 150ms ease;
+=======
+  transition: color 150ms ease, transform 150ms ease;
+>>>>>>> 47866e61d960ee2f1eb99f001df7b23bb44696cf
 }
 
 .globalNav__hamburger:hover {
@@ -924,6 +937,7 @@ footer a:hover {
 
 /* ✅ Mobile breakpoint: hide desktop link, show hamburger */
 @media (max-width: 640px) {
+<<<<<<< HEAD
   .globalNav {
     right: 40px; /* pulls hamburger inside screen */
   }
@@ -932,6 +946,11 @@ footer a:hover {
     display: none;
   }
 
+=======
+  .globalNav__docs {
+    display: none;
+  }
+>>>>>>> 47866e61d960ee2f1eb99f001df7b23bb44696cf
   .globalNav__mobile {
     display: block;
   }
